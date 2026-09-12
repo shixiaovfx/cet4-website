@@ -36364,17 +36364,125 @@
     if (audio.preload === "none") audio.preload = "metadata";
     try { audio.load(); } catch (e) {}
   }
-  /* 跳到第 t 秒。时长已经拿到就立刻跳；没拿到就先记下来，交给 loadedmetadata 补跳。
-     返回 true = 已经跳了，false = 还在读元数据。 */
-  function lsSeek(audio, t) {
-    var d = lsDurOf(audio);
-    if (d > 0) {
-      try { audio.currentTime = Math.max(0, Math.min(d, t)); } catch (e) {}
-      return true;
-    }
-    audio._lsPendingTime = t;
-    lsLoadMeta(audio);
+  /* ---------- 服务器不支持 Range 时的兜底：整段抓成本地 Blob ----------
+     实测（Cloudflare Pages 这类托管很常见）：对 Range 请求直接回 200 + 整个文件、
+     也不带 Accept-Ranges。浏览器于是把这段音频判成"不可寻址"——
+     即使 duration 能算出来，写 currentTime 也会被忽略，表现就是
+     「进度条拖不动、点段落没反应」，但顺序播放一切正常。
+     唯一的解法：把整段音频抓成 Blob 换到 audio.src 上，本地副本就能随便跳。
+     为了不白费流量，只在**真的要跳转**时才抓（见 lsSeek）。 */
+  var LS_CACHE_MAX = 2;                      // 同时最多留 2 段缓存副本（每段约 20MB）
+  var lsCacheSlot = [];                      // [{ audio, objUrl, remote }]
+  function lsSeekable(audio) {
+    try {
+      var sk = audio.seekable;
+      if (sk && sk.length) {
+        var e = sk.end(sk.length - 1);
+        if (isFinite(e) && e > 0) return true;
+      }
+    } catch (e) {}
     return false;
+  }
+  /* 淘汰一段缓存：先把它那张卡退回远程地址（至少还能从头播），再 revoke */
+  function lsCacheRelease(entry) {
+    if (!entry) return;
+    var a = entry.audio;
+    try { URL.revokeObjectURL(entry.objUrl); } catch (e) {}
+    if (a && a._lsBlobUrl === entry.objUrl) {
+      a._lsBlobUrl = null;
+      a._lsNoSeek = true;
+      try { a.src = entry.remote; a.load(); } catch (e) {}
+    }
+  }
+  function lsCacheFetch(audio, onProgress) {
+    var remote = audio._lsRemoteSrc || audio.src;
+    if (!remote || /^blob:/.test(remote)) return Promise.reject(new Error("no remote"));
+    return fetch(remote, { credentials: "same-origin" }).then(function (resp) {
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      var total = parseInt(resp.headers.get("content-length") || "0", 10) || 0;
+      var reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+      if (!reader) return resp.blob();
+      var chunks = [], got = 0;
+      return (function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return new Blob(chunks, { type: "audio/mpeg" });
+          chunks.push(r.value);
+          got += r.value.length;
+          if (onProgress) onProgress(got, total);
+          return pump();
+        });
+      })();
+    }).then(function (blob) {
+      if (!blob.size) throw new Error("空音频");
+      var objUrl = URL.createObjectURL(blob);
+      audio._lsRemoteSrc = remote;
+      audio._lsBlobUrl = objUrl;
+      lsCacheSlot.push({ audio: audio, objUrl: objUrl, remote: remote });
+      while (lsCacheSlot.length > LS_CACHE_MAX) lsCacheRelease(lsCacheSlot.shift());
+      return objUrl;
+    });
+  }
+  /* 换成本地副本；换之前记住"是不是正在播"，元数据到了接着播 */
+  function lsCacheAndQueue(audio, onProgress) {
+    if (audio._lsCaching) return "caching";
+    audio._lsCaching = true;
+    var wasPlaying = !audio.paused;
+    lsCacheFetch(audio, onProgress).then(function (objUrl) {
+      audio._lsCaching = false;
+      audio._lsNoSeek = false;
+      audio._lsResume = wasPlaying;
+      audio.preload = "auto";
+      audio.src = objUrl;
+      try { audio.load(); } catch (e) {}
+    }).catch(function () {
+      audio._lsCaching = false;
+      audio._lsBlobFail = true;
+      if (audio._lsOnCacheFail) audio._lsOnCacheFail();
+      else if (audio._lsNoSeekMessage) audio._lsNoSeekMessage();
+    });
+    return "caching";
+  }
+  /* 跳转总入口：
+       sec   = 目标秒数（点段落用）
+       ratio = 0–1（拖进度条用）
+       onProgress(got, total) 只在真要整段缓存时才会被调用
+     返回 "jumped"（已跳）/ "pending"（元数据没到，已排队）/ "caching"（正在整段缓存） */
+  function lsSeek(audio, sec, ratio, onProgress) {
+    var d = lsDurOf(audio);
+    audio._lsPendingSeek = { sec: sec == null ? null : sec, ratio: ratio == null ? null : ratio };
+    if (d > 0 && lsSeekable(audio)) {
+      var t = audio._lsPendingSeek.sec != null ? audio._lsPendingSeek.sec : audio._lsPendingSeek.ratio * d;
+      audio._lsPendingSeek = null;
+      try { audio.currentTime = Math.max(0, Math.min(d, t)); } catch (e) {}
+      return "jumped";
+    }
+    /* 已经换成本地副本了：元数据没到就排队；到了就直接跳（本地副本一定能跳，
+       哪怕浏览器把 seekable 报得不准，这里也兜一层，别让点击静默失效） */
+    if (audio._lsBlobUrl) {
+      if (audio.readyState >= 1 && d > 0) {
+        var wt = audio._lsPendingSeek.sec != null ? audio._lsPendingSeek.sec : audio._lsPendingSeek.ratio * d;
+        audio._lsPendingSeek = null;
+        try { audio.currentTime = Math.max(0, Math.min(d, wt)); } catch (e) {}
+        return "jumped";
+      }
+      return "pending";
+    }
+    /* 元数据还没到手：先读头部（别急着下载整段）；4 秒还不行就直接走缓存 */
+    if (audio.readyState < 1) {
+      lsLoadMeta(audio);
+      if (!audio._lsPendTimer) {
+        audio._lsPendTimer = setTimeout(function () {
+          audio._lsPendTimer = null;
+          if (audio._lsCaching || audio._lsBlobUrl) return;
+          var dd = lsDurOf(audio);
+          if (dd > 0 && lsSeekable(audio)) return;      // 已经能跳了，交给 loadedmetadata 补
+          lsCacheAndQueue(audio, onProgress);
+        }, 4000);
+      }
+      return "pending";
+    }
+    /* 有元数据但不可寻址 → 整段缓存 */
+    return lsCacheAndQueue(audio, onProgress);
   }
   /* 把 audio.error.code 翻成人话 —— 上线后最常见的就是 404（路径大小写 / 没上传） */
   function audioErrText(a) {
@@ -36441,6 +36549,8 @@
       /* 默认完全不预读：这里有 27 套音频，一开页就同时去抓头部的话，
          碰上不支持 Range 的服务器会把整个文件拉下来（几百 MB）。改成"鼠标移上去才读头部"。 */
       audio.preload = "none";
+      /* 记住远程地址：换成本地缓存副本后，仍要用它去抓整段音频 / 退回远程源 */
+      audio._lsRemoteSrc = srcMain || "";
       if (hasAudio) audio.src = srcMain;
 
       var play = document.createElement("button");
@@ -36713,41 +36823,66 @@
       audio.addEventListener("ended", function () { lp.classList.remove("playing"); paintProgress(); });
       audio.addEventListener("loadedmetadata", function () {
         var d = lsDurOf(audio);
+        var canSeek = lsSeekable(audio) && d > 0;
+        audio._lsNoSeek = !canSeek;
+        if (audio._lsPendTimer) { clearTimeout(audio._lsPendTimer); audio._lsPendTimer = null; }
         if (d > 0) dur.textContent = lsClock(d);
-        /* 补跳：拖进度条 / 点段落时元数据还没到手，这里到了就补上 */
-        if (audio._lsPendingRatio != null) {
-          var rt = audio._lsPendingRatio; audio._lsPendingRatio = null;
-          if (d > 0) { try { audio.currentTime = rt * d; } catch (e) {} }
-          paintProgress();
-        }
-        if (audio._lsPendingTime != null) {
-          var pt = audio._lsPendingTime; audio._lsPendingTime = null;
-          if (d > 0) { try { audio.currentTime = Math.min(pt, d); } catch (e) {} }
-          paintProgress();
-          /* 补跳成功了，把"跳到哪一段"补进提示 —— 不然用户只看到"正在读取音频…" */
-          if (audio._lsPendingSec != null) {
-            var psi = audio._lsPendingSec; audio._lsPendingSec = null;
-            showHint("▶ " + (LS_SECS_EN[psi] || "") + " · " + LS_SECS[psi] + "（" + lsClock(pt) + "）");
+        /* 补跳：拖进度条 / 点段落时元数据还没到手（或刚换成缓存副本），这里到了就补上 */
+        if (audio._lsPendingSeek) {
+          var w = audio._lsPendingSeek; audio._lsPendingSeek = null;
+          var tt = w.sec != null ? w.sec : (d > 0 ? w.ratio * d : null);
+          if (tt != null && d > 0) {
+            try { audio.currentTime = Math.max(0, Math.min(d, tt)); } catch (e) {}
+            /* 补跳成功了，把"跳到哪一段"补进提示 —— 不然用户只看到"正在读取音频…" */
+            if (audio._lsPendingSec != null) {
+              var psi = audio._lsPendingSec; audio._lsPendingSec = null;
+              showHint("▶ " + (LS_SECS_EN[psi] || "") + " · " + LS_SECS[psi] + "（" + lsClock(Math.min(d, tt)) + "）");
+            }
           }
+          paintProgress();
         }
-        /* 服务器不返回长度 / 不支持 Range：明确说出来，别让人以为是自己点坏了 */
-        if (!d && !audio._lsWarnNoSeek) {
+        /* 刚换成缓存副本、换之前正在播 → 接着播 */
+        if (audio._lsResume) {
+          audio._lsResume = false;
+          var rp = audio.play();
+          if (rp && rp.catch) rp.catch(function () {});
+        }
+        /* 服务器不支持 Range（Range 请求被忽略 → 整段音频不可寻址）：
+           进度条拖不动、点段落也不跳。直说原因，并告诉用户"点一下就会自动缓存"。 */
+        if (canSeek) {
+          audio._lsWarnNoSeek = false;
+          dur.title = "";
+        } else if (!audio._lsWarnNoSeek) {
           audio._lsWarnNoSeek = true;
-          dur.textContent = "不可拖动";
-          dur.title = "这个地址没有返回音频长度、也不支持 Range 请求，所以拖不动进度。"
-            + "请把音频当作静态文件托管（Cloudflare Pages 直接放文件即可），"
-            + "或确认 CDN / Worker 会把 Range 请求转发给源站。\n" + (audio.currentSrc || audio.src || "");
+          dur.title = "这个地址不支持分段读取（Range 请求被忽略），所以进度条拖不动、点段落也不跳。\n"
+            + "点段落名或拖进度条会自动把整段音频缓存到本地，缓存好之后就能自由跳转。\n"
+            + (audio._lsRemoteSrc || audio.currentSrc || audio.src || "");
+          showHint("这段音频的地址不支持分段读取：点段落名或拖进度条时会自动缓存整段音频，缓存好就能自由跳转");
         }
       });
       audio.addEventListener("timeupdate", paintProgress);
 
-      /* 加载失败：先试备用源（set.alt），还是没有就把这张卡退回"音频待上传" */
+      /* 加载失败：先试备用源（set.alt）；再试"整段抓下来"；都不行才退回"音频待上传" */
       var triedAlt = false;
       audio.addEventListener("error", function () {
         if (!triedAlt && set.alt) {
           triedAlt = true;
+          audio._lsRemoteSrc = set.alt;
           audio.src = set.alt;
           return;
+        }
+        /* moov 放在文件尾部的 m4a：服务器不支持 Range 时连元数据都读不到，
+           直接判"音频取不到"会误伤 —— 先把整段抓成本地副本再试一次。 */
+        if (!audio._lsBlobUrl && !audio._lsTriedBlob) {
+          audio._lsTriedBlob = true;
+          audio._lsOnCacheFail = function () { markNoAudio(audioErrText(audio)); };
+          var res = lsCacheAndQueue(audio, function (got, total) {
+            dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+          });
+          if (res === "caching") {
+            showHint("音频读不出来：这个地址不支持分段读取，正在整段缓存后重试…");
+            return;
+          }
         }
         markNoAudio(audioErrText(audio));
       });
@@ -36758,17 +36893,17 @@
         var r = bar.getBoundingClientRect();
         if (!r.width) return;
         var ratio = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-        var d = lsDurOf(audio);
-        if (!d) {
-          /* 时长还没拿到（preload=none + 网络延迟）：先去读元数据，
+        var res = lsSeek(audio, null, ratio, function (got, total) {
+          dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+        });
+        if (res === "jumped") { paintProgress(); return; }
+        if (res === "pending") {
+          /* 时长还没拿到（preload=none + 网络延迟）：先读元数据，
              读到之后 loadedmetadata 会按这次的比例补跳，别让这一下拖空。 */
-          audio._lsPendingRatio = ratio;
-          lsLoadMeta(audio);
           dur.textContent = "读取长度…";
           return;
         }
-        try { audio.currentTime = ratio * d; } catch (e) {}
-        paintProgress();
+        showHint("这个地址不支持分段读取：正在自动缓存整段音频，缓存好之后进度条就能自由拖动");
       }
       bar.addEventListener("pointerdown", function (e) {
         if (!hasAudio) return;
@@ -36862,9 +36997,12 @@
           return;
         }
         /* readyState 还是 0 时直接写 currentTime 会被浏览器忽略（只记成起始位置），
-           看起来就是"点了没反应"。走 lsSeek：时长没到就先读，读到后自动补跳。 */
-        audio._lsPendingSec = i;          // 元数据没到手时，补跳完要用它补一条提示
-        var jumped = lsSeek(audio, mk[i]);
+           看起来就是"点了没反应"。走 lsSeek：元数据没到就先读、读到后自动补跳；
+           服务器不支持 Range（整段不可寻址）时会自动整段缓存，缓存好再跳。 */
+        audio._lsPendingSec = i;          // 补跳完要用它补一条提示
+        var res = lsSeek(audio, mk[i], null, function (got, total) {
+          dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+        });
         paintProgress();
         /* 「点了以后播」：跳过去的同时直接开播，不然还得再按一次播放键。
            一次只响一个 —— 跟播放键那边的处理保持一致。 */
@@ -36874,9 +37012,14 @@
           var pr = audio.play();
           if (pr && pr.catch) pr.catch(function () {});
         }
-        showHint(jumped
-          ? ("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "（" + lsClock(mk[i]) + "）")
-          : "正在读取音频…");
+        if (res === "jumped") {
+          showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "（" + lsClock(mk[i]) + "）");
+        } else if (res === "caching") {
+          showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "：这段音频的地址不支持分段读取，"
+            + "正在自动缓存整段音频，缓存好会从 " + lsClock(mk[i]) + " 开始播…");
+        } else {
+          showHint("正在读取音频…");
+        }
       }
       paintSecs();
 
