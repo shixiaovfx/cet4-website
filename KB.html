@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="cuwyy3mXXY4qipN1HjaW6r">
+<head data-page-node-id="OKa3zRdvgq2cOmrqc9ZJO5">
+<meta charset="UTF-8" data-page-node-id="LNvFthjN9FGVzNOkSZyh82">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="9aicWzudgDSwpepjBIeCVP">
+<title>宝宝大王的课程表</title>
+<style>
+  :root{
+    --bg:#fff2f6;
+    --card:#ffffff;
+    --primary:#e8839e;          /* 玫瑰粉 */
+    --primary-dark:#c65f7e;
+    --text:#5b4a52;
+    --muted:#b39aa3;
+    --radius:20px;
+    --shadow:0 10px 28px rgba(236,150,175,.20);
+    --shadow-soft:0 4px 14px rgba(236,150,175,.13);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC","Segoe UI","Comic Sans MS",sans-serif;
+    color:var(--text);
+    min-height:100vh;
+    padding:22px 26px 44px;
+    background:
+      radial-gradient(circle at 8% 12%, rgba(255,214,226,.6) 0%, rgba(255,214,226,0) 42%),
+      radial-gradient(circle at 92% 8%, rgba(213,241,232,.7) 0%, rgba(213,241,232,0) 40%),
+      radial-gradient(circle at 88% 92%, rgba(233,224,255,.7) 0%, rgba(233,224,255,0) 42%),
+      radial-gradient(circle at 10% 90%, rgba(255,240,210,.7) 0%, rgba(255,240,210,0) 40%),
+      linear-gradient(180deg,#fff4f7 0%,#fdf7fb 45%,#f4fbf8 100%);
+    background-attachment:fixed;
+  }
+  .page{max-width:1420px;margin:0 auto;}
+
+  /* ========== Header：马卡龙柔粉渐变 ========== */
+  .header{
+    background:linear-gradient(120deg,#ffd9e3 0%,#ffe9d8 45%,#dff1ea 100%);
+    border-radius:26px;
+    padding:22px 28px;
+    box-shadow:var(--shadow);
+    display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    border:1px solid rgba(255,255,255,.7);position:relative;overflow:hidden;
+  }
+  .header::before,.header::after{content:"";position:absolute;border-radius:50%;pointer-events:none;}
+  .header::before{width:120px;height:120px;right:-30px;top:-40px;background:rgba(255,255,255,.35);}
+  .header::after{width:74px;height:74px;left:18%;bottom:-28px;background:rgba(255,190,210,.35);}
+  .header .titles{position:relative;z-index:1;}
+  .header .titles h1{font-size:25px;font-weight:800;color:var(--primary-dark);letter-spacing:1px;display:flex;align-items:center;gap:10px;}
+
+  /* ===== 标题 D 款 · 双心摆动爱心（两颗渐变心交错摆动，灵动俏皮） ===== */
+  h1 .d-wrap{position:relative;width:34px;height:26px;display:inline-block;flex:0 0 auto;}
+  h1 .d-wrap .ick{position:absolute;top:0;width:18px;height:18px;transform:rotate(45deg);}
+  h1 .d-wrap .ick::before,h1 .d-wrap .ick::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:inherit;}
+  h1 .d-wrap .ick::before{top:-9px;left:0;}
+  h1 .d-wrap .ick::after{left:-9px;top:0;}
+  h1 .d-wrap .d1{left:1px;background:linear-gradient(135deg,#ff8fb6,#f44e8c);animation:swaya 2.2s ease-in-out infinite;}
+  h1 .d-wrap .d2{right:0;top:1px;background:linear-gradient(135deg,#ffb3c7,#ff7eb3);animation:swayb 2.2s ease-in-out infinite;}
+  @keyframes swaya{0%,100%{transform:rotate(45deg) translate(0,0);}50%{transform:rotate(15deg) translate(9px,7px);}}
+  @keyframes swayb{0%,100%{transform:rotate(45deg) translate(0,0);}50%{transform:rotate(75deg) translate(-5px,-3px);}}
+  .header .titles .sub{margin-top:7px;font-size:13px;color:#a0657b;letter-spacing:.4px;}
+  .header .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:relative;z-index:1;}
+
+  /* 当前周：左右箭头 + 中间周数（马卡龙胶囊）。弹窗「星期」「节次」共用 .week-arrow 与 weekPop，勿删 */
+  .week-step{display:inline-flex;align-items:center;gap:2px;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(198,95,126,.35);
+    border-radius:999px;padding:4px 6px;
+    box-shadow:var(--shadow-soft);user-select:none;}
+  .week-step-btn{
+    border:none;background:transparent;width:26px;height:26px;line-height:24px;
+    border-radius:50%;cursor:pointer;font-size:17px;font-weight:800;color:#c0657f;
+    font-family:inherit;transition:.15s;padding:0;user-select:none;
+  }
+  .week-step-btn:hover{background:#ffe1ec;color:var(--primary-dark);}
+  .week-step-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(232,131,158,.25);}
+  .week-step-txt{min-width:52px;text-align:center;font-size:13px;font-weight:800;color:var(--primary-dark);white-space:nowrap;}
+  .week-arrow{
+    flex:none;width:8px;height:8px;
+    border-right:2px solid #c98ab0;border-bottom:2px solid #c98ab0;
+    transform:rotate(45deg) translateY(-2px);
+    transition:transform .2s;
+  }
+  @keyframes weekPop{from{opacity:0;transform:translateY(-6px) scale(.98);}to{opacity:1;transform:none;}}
+
+  /* ========== 弹窗内通用马卡龙胶囊下拉（「星期」「节次」，「当前周」同款风格） ========== */
+  .flow-wrap{position:relative;}
+  .flow-trigger{
+    width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;
+    background:#fffafb;border:1px solid #f6e3ea;border-radius:999px;padding:8px 12px;
+    font-family:inherit;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;transition:.15s;text-align:left;
+  }
+  .flow-trigger:hover{border-color:var(--primary);background:#fff;}
+  .flow-trigger .flow-trigger-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;}
+  .flow-trigger .week-arrow{flex:0 0 auto;}
+  .flow-drop{
+    position:fixed;top:0;left:0;z-index:95;
+    display:none;min-width:200px;max-width:min(420px, calc(100vw - 20px));padding:6px;
+    background:#fff;border-radius:16px;
+    box-shadow:0 14px 34px rgba(190,120,145,.3);
+    border:1px solid #f6e3ea;
+    max-height:min(420px, calc(100vh - 40px));
+    overflow:auto;
+  }
+  .flow-drop.open{display:block;animation:weekPop .18s ease;}
+  .flow-opt{
+    display:block;width:100%;text-align:left;border:none;background:transparent;
+    padding:8px 14px;border-radius:10px;
+    font-family:inherit;font-size:13px;font-weight:700;color:var(--text);
+    cursor:pointer;transition:.14s;white-space:nowrap;
+  }
+  .flow-opt:hover{background:#fdeef3;}
+  .flow-opt.active{background:#ffe1ec;color:var(--primary-dark);}
+  .flow-opt:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(232,131,158,.35);}
+
+  /* ========== 添加方式（大课 / 小课）切换 ========== */
+  .mode-group{display:inline-flex;gap:8px;background:#fdf0f4;border:1px solid #f6e3ea;border-radius:999px;padding:4px;}
+  .mode-btn{border:none;background:transparent;color:#b78297;font-size:12.5px;font-weight:700;padding:6px 18px;border-radius:999px;cursor:pointer;transition:.16s;}
+  .mode-btn:hover{background:#fff;color:var(--primary-dark);}
+  .mode-btn.active{background:var(--primary);color:#fff;box-shadow:0 3px 8px rgba(232,131,158,.4);}
+
+  .btn-add{border:none;background:var(--primary);color:#fff;font-size:13px;font-weight:700;padding:10px 20px;border-radius:999px;cursor:pointer;box-shadow:0 4px 12px rgba(232,131,158,.4);transition:.2s;}
+  .btn-add:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(232,131,158,.5);}
+  .btn-reset{border:1px solid rgba(198,95,126,.5);background:rgba(255,255,255,.65);color:#c0657f;font-size:12px;padding:8px 14px;border-radius:999px;cursor:pointer;transition:.2s;}
+  .btn-reset:hover{background:#fff;}
+  .btn-now{border:none;background:#fff;color:var(--primary-dark);font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;cursor:pointer;transition:.2s;box-shadow:var(--shadow-soft);}
+  .btn-now:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(236,150,175,.28);}
+  .notice{display:none;margin:14px 0 0;padding:11px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow-soft);}
+  .notice.show{display:block;}
+  .notice.info{background:#fff7e9;color:#a06a12;border:1px solid #ffe4ad;border-radius:999px;}
+  .notice.ok{background:#e7f7f0;color:#2f8f6b;border:1px solid #bfe9d8;border-radius:999px;}
+  /* 通知条上的操作按钮（撤销 / 回到本周）与关闭按钮 */
+  .notice .n-act{margin-left:12px;border:1px solid currentColor;background:transparent;color:inherit;
+    font-family:inherit;font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px;cursor:pointer;transition:.15s;}
+  .notice .n-act:hover{background:rgba(255,255,255,.65);}
+  .notice .n-close{margin-left:10px;border:none;background:transparent;color:inherit;font-size:16px;
+    line-height:1;cursor:pointer;opacity:.55;padding:0 2px;}
+  .notice .n-close:hover{opacity:1;}
+
+  .week-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .week-group .wlabel{color:#a0657b;font-size:13px;font-weight:700;padding-left:8px;white-space:nowrap;}
+
+  /* ========== 信息条 ========== */
+  .info-bar{margin:16px 0 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(255,255,255,.85);border-radius:var(--radius);padding:13px 20px;box-shadow:var(--shadow-soft);font-size:13px;color:var(--muted);border:1px solid rgba(255,255,255,.8);backdrop-filter:blur(4px);}
+  .info-bar .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.05);}
+  .info-bar .tip{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap;}
+
+  /* ========== 课表：12 单节行、无边框小格子 ========== */
+  .tt-wrap{position:relative;overflow:auto;border-radius:var(--radius);box-shadow:var(--shadow);background:rgba(255,255,255,.55);padding:0;backdrop-filter:blur(2px);}
+  /* ============ 时间轴进度线：跟随当前真实时刻滚动 ============ */
+  .now-line{position:absolute;left:0;top:0;height:2px;background:#f58fa8;border-radius:2px;z-index:20;pointer-events:none;display:none;box-shadow:0 1px 5px rgba(245,143,168,.45);}
+  .now-line.on{display:block;}
+  .now-line .now-dot{position:absolute;left:7px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:#f58fa8;box-shadow:0 0 0 3px rgba(245,143,168,.18);}
+  .now-line .now-tag{position:absolute;left:auto;right:0;top:-24px;margin-top:0;padding:3px 10px;border-radius:999px;background:#f58fa8;color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;white-space:nowrap;line-height:16px;box-shadow:0 2px 8px rgba(245,143,168,.35);}
+  table.tt{width:100%;border-collapse:collapse;border-spacing:0;min-width:1120px;table-layout:fixed;}
+
+  table.tt thead th{
+    padding:10px 6px;font-size:14px;font-weight:800;color:var(--text);
+    background:rgba(255,222,231,.55);border:1px dashed rgba(205,160,178,.22);
+  }
+  table.tt thead th:first-child{width:150px;min-width:150px;color:var(--primary-dark);}
+  table.tt thead th.today{color:#c65f7e;}
+
+  table.tt td{border:1px dashed rgba(205,160,178,.20);background:transparent;vertical-align:top;padding:7px 3px;height:96px;}
+  table.tt td.session{width:150px;min-width:150px;text-align:center;vertical-align:middle;padding:4px;background:transparent;}
+  table.tt td.session .grp{font-size:10.5px;color:#d9a0b4;font-weight:700;margin-bottom:3px;letter-spacing:.3px;}
+  table.tt td.session .nm{font-size:13px;font-weight:800;color:var(--primary-dark);}
+  table.tt td.session .time{font-size:11.5px;color:#c48aa0;font-weight:700;margin-top:4px;}
+  tr:last-child td{padding-bottom:8px;}
+
+  /* 课程小格子：无边框圆角马卡龙浅底 */
+  .course{
+    position:relative;border-radius:14px;padding:9px 11px;
+    background:#fff;box-shadow:0 2px 7px rgba(220,150,170,.08);
+    cursor:pointer;transition:.16s;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+  }
+  /* 格子高度只是"最小值"：单门课时撑满，内容多时整行自动增高，而不是被 overflow:hidden 裁掉 */
+  td.cell > .course{min-height:100%;}
+  td.cell > .course + .course{min-height:0;margin-top:6px;}
+  .course:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(220,150,170,.20);}
+  /* 连堂合并色块：跨两行、信息垂直居中、左上角两行小字标注两小节时间 */
+  .course.merged-card{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
+  .course.merged-card .cname{padding-right:0;}
+  .mtimes{position:absolute;top:7px;left:9px;font-size:9.5px;line-height:1.55;opacity:.62;text-align:left;pointer-events:none;font-weight:700;letter-spacing:.2px;}
+  .course.mini{margin-top:5px;padding:5px 9px;border-radius:10px;background:rgba(255,255,255,.78);width:100%;text-align:center;position:relative;box-shadow:none;display:flex;flex-direction:column;align-items:center;}
+  .course.mini .cname{font-size:11px;padding-right:0;color:inherit;max-width:100%;}
+  .course.mini .mint{display:block;font-size:9px;opacity:.72;margin-top:4px;line-height:1.5;max-width:100%;}
+  .course.mini .mline{display:block;font-size:9px;opacity:.72;margin-top:3px;line-height:1.5;max-width:100%;word-break:break-word;}
+  /* 合并单元格：承载连堂色块与左上角时间角标 */
+  td.cell.merged{position:relative;}
+  .course .cname{font-size:12.5px;font-weight:800;line-height:1.5;word-break:break-word;padding-right:0;max-width:100%;}
+  .course .cline{font-size:10.5px;color:#917580;margin-top:5px;line-height:1.6;word-break:break-word;max-width:100%;}
+  .course .cline:first-of-type{margin-top:5px;}
+  .course .cname + .cline{margin-top:9px;}
+  .course .cinfo{font-size:10.5px;color:#917580;margin-top:6px;line-height:1.6;}
+  .course .heart{position:absolute;top:6px;right:8px;font-size:11px;opacity:.55;color:inherit;pointer-events:none;}
+  .course .del{position:absolute;top:3px;right:6px;width:17px;height:17px;line-height:15px;text-align:center;border:none;background:rgba(255,255,255,.85);color:#c0657f;border-radius:50%;font-size:12px;cursor:pointer;opacity:0;transition:.15s;z-index:1;}
+  .course:hover .del{opacity:1;}
+  .course .del:hover{background:#f27f8f;color:#fff;}
+  /* 触屏没有 hover 状态：删除按钮必须常驻显示，否则手机上「加得进去、删不掉」 */
+  @media (hover:none),(pointer:coarse){
+    .course .del{opacity:.7;}
+    .course .del:active{opacity:1;}
+  }
+  /* 今日整列完整描边框：上沿含表头、贯穿到底、四角圆角、细淡粉实线，随日期自动轮换 */
+  .today-frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;
+    border:2px solid rgba(252,168,190,.6);border-radius:16px;z-index:2;
+    box-shadow:0 0 14px 2px rgba(252,168,190,.26), 0 3px 12px rgba(230,150,175,.14);}
+  /* 冲突提示 / 字段校验错误 / 自定义确认框 */
+  .conflict-warn{display:none;margin-top:16px;padding:12px 14px;border-radius:14px;
+    background:#fff5f7;border:1px solid #f7cdd6;color:#b1526a;font-size:12.5px;line-height:1.75;}
+  .conflict-warn.show{display:block;}
+  .conflict-warn b{display:block;margin-bottom:4px;font-size:13px;color:#a03c58;}
+  .conflict-warn ul{margin:2px 0 0;padding-left:18px;}
+  .conflict-warn .cw-act{margin-top:10px;border:none;background:var(--primary);color:#fff;
+    font-family:inherit;font-size:12.5px;font-weight:700;padding:7px 16px;border-radius:999px;cursor:pointer;}
+  .conflict-warn .cw-act:hover{background:var(--primary-dark);}
+  .field-err{display:none;margin-top:5px;font-size:11.5px;color:#d9536f;}
+  .field-err.show{display:block;}
+  .confirm-box{background:#fff;border-radius:18px;width:350px;max-width:88vw;padding:22px 24px;
+    box-shadow:0 24px 60px rgba(160,90,110,.35);}
+  .confirm-box p{font-size:13.5px;line-height:1.75;color:var(--text);margin-bottom:20px;white-space:pre-line;}
+
+  /* ========== 添加课程弹窗 ========== */
+  .mask{position:fixed;inset:0;background:rgba(150,90,110,.35);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(3px);}
+  .mask.show{display:flex;}
+  .modal{background:#fff;border-radius:22px;width:480px;max-width:94vw;max-height:92vh;overflow:auto;padding:26px 28px;box-shadow:0 24px 60px rgba(160,90,110,.35);border:1px solid var(--line,#f6e3ea);}
+  .modal h3{font-size:18px;margin-bottom:18px;color:var(--primary-dark);padding-left:0;text-align:left;}
+  .form-row{margin-bottom:14px;}
+  .form-row label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;min-height:16px;line-height:16px;letter-spacing:.3px;}
+  .form-row .req{color:#ef7d8e;}
+  .form-row input,.form-row select{width:100%;padding:9px 12px;border:1px solid #f6e3ea;border-radius:12px;font-size:13.5px;outline:none;transition:.15s;background:#fffafb;color:var(--text);}
+  .form-row input:focus,.form-row select:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(232,131,158,.14);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .modal-actions button{border:none;border-radius:999px;padding:9px 20px;font-size:13.5px;cursor:pointer;font-weight:700;transition:.15s;}
+  .btn-cancel{background:#f7ecef;color:#a0657b;}
+  .btn-cancel:hover{background:#f2dfe5;}
+  .btn-save{background:var(--primary);color:#fff;box-shadow:0 4px 10px rgba(232,131,158,.4);}
+  .btn-save:hover{background:var(--primary-dark);}
+
+  footer{text-align:center;color:#c9a3b1;font-size:12.5px;margin-top:24px;letter-spacing:1px;}
+  @media (max-width:1200px){ table.tt{min-width:1000px;} }
+
+  /* ========== 手机自适应：收紧布局+保留横向滚动，可读性与不破版兼顾 ========== */
+  @media (max-width:450px){
+    body{padding:10px 8px 30px;}
+    .page{max-width:100%;}
+    .header{padding:14px 14px;gap:12px;border-radius:18px;justify-content:center;flex-direction:column;text-align:center;}
+    .header .titles h1{font-size:19px;justify-content:center;}
+    h1 .d-wrap{width:28px;height:22px;}
+    h1 .d-wrap .ick{width:14px;height:14px;}
+    h1 .d-wrap .ick::before,h1 .d-wrap .ick::after{width:14px;height:14px;}
+    h1 .d-wrap .ick::before{top:-7px;left:0;}
+    h1 .d-wrap .ick::after{left:-7px;top:0;}
+    .header .titles .sub{font-size:11.5px;line-height:1.6;}
+    .header .controls{justify-content:center;gap:8px;}
+    .week-step{padding:3px 4px;}
+    .week-step-btn{width:24px;height:24px;line-height:22px;font-size:16px;}
+    .week-step-txt{font-size:12px;min-width:44px;}
+    .btn-add,.btn-reset,.btn-now{font-size:11.5px;padding:7px 11px;}
+    .btn-reset{display:inline-block;}
+    .info-bar{padding:10px 12px;font-size:12px;gap:8px;margin:12px 0 10px;}
+    .notice{margin:10px 0 0;padding:9px 12px;font-size:12px;}
+    .week-group .wlabel{font-size:12px;padding-left:4px;}
+
+    .tt-wrap{border-radius:14px;}
+    table.tt{min-width:620px;}
+    table.tt thead th{font-size:11px;padding:8px 3px;}
+    table.tt thead th:first-child{width:60px;min-width:60px;}
+    table.tt td{height:64px;padding:4px 2px;}
+    table.tt td.session{width:60px;min-width:60px;padding:2px;}
+    table.tt td.session .grp, table.tt td.session .time{display:none;}
+    table.tt td.session .nm{font-size:11px;}
+    .course{padding:4px 3px;border-radius:10px;}
+    .course .cname{font-size:11px;line-height:1.35;}
+    .course .cline{font-size:9px;margin-top:3px;line-height:1.4;word-break:break-all;}
+    .course .cname + .cline{margin-top:5px;}
+    .mtimes{font-size:8px;top:3px;left:4px;}
+    .course .del{width:15px;height:15px;line-height:13px;font-size:11px;}
+    table.tt td.session .time{display:none;}
+
+    .today-frame{border:1.5px solid rgba(252,168,190,.6);border-radius:12px;box-shadow:0 0 10px 2px rgba(252,168,190,.2);}
+    .now-line .now-dot{width:8px;height:8px;margin-top:-4px;left:5px;}
+    .now-line .now-tag{font-size:10px;padding:2px 8px;top:-21px;}
+    footer{font-size:11.5px;margin-top:16px;}
+  }
+</style>
+</head>
+<body data-page-node-id="bYyVQKCJqnEfmsq5THzH2t">
+<div class="page" data-page-node-id="0XL5EAOHg4hb22kDOGFsdA">
+
+  <div class="header" data-page-node-id="eWz4lkCGaVi2Km60rNmwkX">
+    <div class="titles" data-page-node-id="S6zqHKIAM7kb9yuQOiIP59">
+      <h1 data-page-node-id="tXqB71ZWKkbBVwaN2Oq3EV"><span class="d-wrap" aria-hidden="true" data-page-node-id="dZmGdF7TYdZMSPJBRMmr2V"><span class="ick d1" data-page-node-id="ZCmLsR3d4uv50EhXuXuf9A"></span><span class="ick d2" data-page-node-id="7rOi95SiKo5yPGCcNBTUoH"></span></span>宝宝大王的课程表</h1>
+      <div class="sub" data-page-node-id="g7XnF9kNCucpGPHSsmJl6Q"><span id="todayInfo" data-page-node-id="D9RnNdsibdlQjsGO2pbNYG"></span>　·　<span id="semesterInfo" data-page-node-id="RtJS4z6T5cbESk68tXxmYA"></span>　希望宝宝天天开心～</div>
+    </div>
+    <div class="controls" data-page-node-id="GSElTxm296fFpEnWOyWeLy">
+      <div class="week-group" data-page-node-id="OeGBwqu3SDNuUn6d5173wQ">
+        <div class="week-step" id="weekStep" title="切换查看第几周课程" role="group" aria-label="当前周" data-page-node-id="N5fFzsGm2gZeCDmq3LoLwv">
+          <button type="button" class="week-step-btn" id="weekPrev" aria-label="上一周" data-page-node-id="VvEcqYHnIT2nVDs9K80EUa">‹</button>
+          <span class="week-step-txt" id="weekTriggerTxt" data-page-node-id="PMIRFyXTwcAjcUu6U4bz06">第1周</span>
+          <button type="button" class="week-step-btn" id="weekNext" aria-label="下一周" data-page-node-id="xkB8WVeLA1k2YavwidjEPS">›</button>
+        </div>
+      </div>
+      <button class="btn-now" onclick="goToRealWeek()" title="返回真实当周" data-page-node-id="gSU0iBBFe5UMtWP5bCbPmo">回到本周</button>
+      <button class="btn-add" onclick="openAdd()" data-page-node-id="qCd77p1g7eyIyFuKxnCzGQ">＋ 添加课程</button>
+      <button class="btn-reset" onclick="exportData()" title="导出为 JSON 文件，换设备或清缓存前先备份" data-page-node-id="GSRAOEmaFlJsgU1dxyoGFf">导出备份</button>
+      <button class="btn-reset" onclick="document.getElementById('importFile').click()" title="从备份文件恢复" data-page-node-id="HzYgrDi8RbpIwENaZd8Dvq">导入备份</button>
+      <button class="btn-reset" onclick="resetDefault()" data-page-node-id="6N8Dtjz78OBvvx4bzxKF9k">恢复默认课表</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(this)" data-page-node-id="ozfHqrf51iPhh6DdYnLH37">
+    </div>
+  </div>
+
+  <div class="notice" id="notice" data-page-node-id="FQgEzZjhvBgoBdzNjNmVZB"></div>
+
+  <div class="info-bar" data-page-node-id="P3arill4YSkeC07yHwRFqP">
+    <span data-page-node-id="hNfTVmjKOtpQ5Z4eXJHiqm"><span class="dot" style="background:#f7a8bd" data-page-node-id="ac3e07RGZqefnS0B1VqnM0"></span>当前作息（随日期自动）：<b id="seasonLabel" style="color:#c65f7e;" data-page-node-id="w858BsBnPUUgrvvJIQUY0u">夏季</b></span>
+    <span data-page-node-id="ILVKikZfZeFB7UGuuQVeXA"><span class="dot" style="background:#f5c16c" data-page-node-id="aBhzUTF52jAsuG12SoPJCg"></span>当前显示：第 <b id="weekLabel" style="color:#e59a3c;font-size:14px;" data-page-node-id="nqnNenJ76OLNZQtHxGCg3F">1</b> 周课程（顶部选择可切换）</span>
+    <span data-page-node-id="DD0zFL555FHLeOGR9dhbhE"><span class="dot" style="background:#8fd3b4" data-page-node-id="ELOM7N1Eb6XLy72fZ24nl0"></span>自定义课程带 <span style="border:1px dashed #6fbf9c;border-radius:4px;padding:0 4px;font-size:11px;color:#5aa897;" data-page-node-id="hqSxfF7m7XI34FlwQBvSt2">♡</span> 标识</span>
+  </div>
+
+  <div class="tt-wrap" data-page-node-id="bzqaOkZ9XDMaTgzSD83fvB">
+    <table class="tt" id="tt" data-page-node-id="QjG17NlWOEHH08mBvOtgD4">
+      <thead id="thead" data-page-node-id="WNBOftJgcAFS72vTcnznkQ"></thead>
+      <tbody id="tbody" data-page-node-id="3KzSjsowcTegTF4QULGzVB"></tbody>
+    </table>
+    <div class="today-frame" id="todayFrame" aria-hidden="true" data-page-node-id="8Px5PCUcEQbDt271JM4ynH"></div>
+    <div class="now-line" id="nowLine" aria-hidden="true" data-page-node-id="4bFH8ivfqH8yoUoC3XO7HR"><span class="now-dot" data-page-node-id="uPzwDm48pGMGGdk5TbC8p1"></span><span class="now-tag" id="nowTag" data-page-node-id="t3A1Y2i2tWybY97QoVA0ez">--:--</span></div>
+  </div>
+
+  <footer data-page-node-id="gH7nSNKwcSivNllin3lsrF">🌸 送你满满的好心情 · 数据存在本机浏览器，换设备或清缓存前记得「导出备份」 🌿</footer>
+</div>
+
+<!-- 添加课程模态框 -->
+<div class="mask" id="mask" data-page-node-id="joQUBlR9ur6pERmmkul6xa">
+  <div class="modal" data-page-node-id="mWy8AQ50SZyMGR8siayZV2">
+    <h3 id="modalTitle" data-page-node-id="a4x599IT8Ntx5Sj8Y3vvXQ">✨ 添加课程</h3>
+    <div class="form-row" data-page-node-id="sFo32KJ8N6Ze1235xIxX88">
+      <label data-page-node-id="PTToBxCQo81MiHkoxekVSz">添加方式 <span class="req" data-page-node-id="Vwr74O0ANJtLIrSsGVRD98">*</span></label>
+      <div class="mode-group" id="modeGroup" data-page-node-id="RGPz0eRA6GvCK3TI393vpn">
+        <button type="button" class="mode-btn active" data-mode="big" onclick="setAddMode('big')" data-page-node-id="4UcofWtZQNwWkrrcNffYct">大课</button>
+        <button type="button" class="mode-btn" data-mode="small" onclick="setAddMode('small')" data-page-node-id="ESPlyMW6vKg5GmpnoGIM1M">小课</button>
+      </div>
+    </div>
+    <div class="form-row" data-page-node-id="pSkSiCrY17siiARRgVTcJj">
+      <label data-page-node-id="cDPa6Fz4z1tN3fx49qnm5N">课程名称 <span class="req" data-page-node-id="NyTPJpPiJLukIoDsWieYNQ">*</span></label>
+      <input id="fName" type="text" placeholder="例如：高等数学" maxlength="40" data-page-node-id="DfFpYvvrKIdmCwEd0nfscL">
+      <div class="field-err" id="errName" data-page-node-id="bFzA9rW4mZO4zv251SEFsz">请填写课程名称</div>
+    </div>
+    <div class="form-row" data-page-node-id="DteQENl7KV42Z33cz5OYbH">
+      <label data-page-node-id="sE4qe10Yr7bu1ZFiA3th1I">授课教师（选填）</label>
+      <input id="fTeacher" type="text" placeholder="例如：张三" maxlength="20" data-page-node-id="ycVZutAH3erHaysRpEcO6w">
+    </div>
+    <div class="form-grid" data-page-node-id="VBnaSyS6n3yssWcykGlpxF">
+      <div class="form-row" data-page-node-id="BuWn604RkJBMY7WnlVfV5C">
+        <label data-page-node-id="y4KUx37bocGkygethCyTkE">星期 <span class="req" data-page-node-id="QZ8yp7fCM7QewyhBBu3g4o">*</span></label>
+        <div class="flow-wrap" id="fDayWrap" data-page-node-id="7ajCvmwB53yGiifHnNQXlG">
+          <button type="button" class="flow-trigger" id="fDayTrigger" aria-haspopup="listbox" aria-expanded="false" data-page-node-id="krbf3NC0lGf8pwHNfmJxCU">
+            <span class="flow-trigger-txt" id="fDayTxt" data-page-node-id="emzyPHblEBWfvahQxZVNH6">星期一</span>
+            <span class="week-arrow" aria-hidden="true" data-page-node-id="zqdgdhELfDPLGgAawJDbl9"></span>
+          </button>
+          <div class="flow-drop" id="fDayDrop" role="listbox" data-page-node-id="CEqD9lZe7u59ErxGoMPyvW"></div>
+        </div>
+      </div>
+      <div class="form-row" data-page-node-id="aNAQ0Favvr2uTGB4zDAF1k">
+        <label data-page-node-id="A0HbiGvwBGi2RJC9XECDZb">节次 <span class="req" data-page-node-id="IydIeJtSZZDmdTTlBqpcfY">*</span></label>
+        <div class="flow-wrap" id="fSessionWrap" data-page-node-id="pC1OCxrDHTaPP7oxIx55YA">
+          <button type="button" class="flow-trigger" id="fSessionTrigger" aria-haspopup="listbox" aria-expanded="false" data-page-node-id="CSOE85du5VRn0LQxH8EDnG">
+            <span class="flow-trigger-txt" id="fSessionTxt" data-page-node-id="qMTISBDZiXg6YmKDNiclaa"></span>
+            <span class="week-arrow" aria-hidden="true" data-page-node-id="F71ZpICX2sjTwEmtkqX0G0"></span>
+          </button>
+          <div class="flow-drop" id="fSessionDrop" role="listbox" data-page-node-id="8poHAHzTYnaEkjukGKNQmw"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-grid" data-page-node-id="sAeo1YsD4g0VeEwyM4dobJ">
+      <div class="form-row" data-page-node-id="EAp2aCRURWpt9BITmk5GVF">
+        <label data-page-node-id="9jf4WasdRLhOeDBGO6GGL0">上课周次 <span class="req" data-page-node-id="Ih9Zjojc6VWUKrCNR8myhZ">*</span></label>
+        <input id="fWeeks" type="text" placeholder="如 1-16 或 1-8,10-16" title="示例：1-16；多个区间用英文逗号，如 1-8,10-16" maxlength="30" data-page-node-id="TuMgOxAVqr02lGELUsFOe0">
+        <div class="field-err" id="errWeeks" data-page-node-id="5cwzHGXQRWlMtUZ2LNvIXx"></div>
+      </div>
+      <div class="form-row" data-page-node-id="VORLiaHmaoq9ODS7a3ZFen">
+        <label data-page-node-id="55L78IJ1QVv4DIotgvNaap">上课地点（选填）</label>
+        <input id="fLocation" type="text" placeholder="如：弘毅楼103" maxlength="40" data-page-node-id="if7GJB9MmgzdNP6tnjfMTB">
+      </div>
+    </div>
+    <div class="conflict-warn" id="conflictWarn" data-page-node-id="LpCaoH5VS4SpOeaeqkN6oI"></div>
+    <div class="modal-actions" data-page-node-id="YOGeQG3ebZ7lnSTOVblLMC">
+      <button type="button" class="btn-reset" id="btnModalDel" style="display:none" onclick="deleteFromModal()" data-page-node-id="nNw76hBID1S8jn9EKt4Oa4">删除这门课</button>
+      <button class="btn-cancel" onclick="closeModal()" data-page-node-id="aGZKQVZXZ27HtVgYHVbgqA">取消</button>
+      <button class="btn-save" id="btnModalSave" onclick="saveCourse()" data-page-node-id="1HqZHWyZakl92XiptDMq5T">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自定义确认框（替代浏览器原生 confirm） -->
+<div class="mask" id="confirmMask" data-page-node-id="FoaF432C2vp7DTC3V7D7F9">
+  <div class="confirm-box" data-page-node-id="zXwzEXdH2FJWabBlsInGsw">
+    <p id="confirmMsg" data-page-node-id="h352LCzQEZeHAc09PEg7U3"></p>
+    <div class="modal-actions" style="margin-top:0" data-page-node-id="TYar2WAv7pKSvNZbEmwlSc">
+      <button class="btn-cancel" id="confirmNo" data-page-node-id="REXtIscfUaGonphwpYD9iu">取消</button>
+      <button class="btn-save" id="confirmYes" data-page-node-id="Tqvtos3fmIJRqV7H2j6AkG">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= 作息时间表（夏季 5.1-9.30 / 春秋冬季，随日期自动判定） ================= */
+var SCHEDULES = {
+  summer: [
+    { label:"第一大节", period:"01-02节", slots:[["08:10","08:55"],["09:05","09:50"]] },
+    { label:"第二大节", period:"03-04节", slots:[["10:10","10:55"],["11:05","11:50"]] },
+    { label:"第三大节", period:"05-06节", slots:[["14:45","15:30"],["15:40","16:25"]] },
+    { label:"第四大节", period:"07-08节", slots:[["16:40","17:25"],["17:35","18:20"]] },
+    { label:"第五大节", period:"09-10节", slots:[["19:30","20:15"],["20:25","21:10"]] },
+    { label:"第六大节", period:"11-12节", slots:[["21:20","22:05"], null] }
+  ],
+  other: [
+    { label:"第一大节", period:"01-02节", slots:[["08:20","09:05"],["09:15","10:00"]] },
+    { label:"第二大节", period:"03-04节", slots:[["10:20","11:05"],["11:15","12:00"]] },
+    { label:"第三大节", period:"05-06节", slots:[["14:30","15:15"],["15:25","16:10"]] },
+    { label:"第四大节", period:"07-08节", slots:[["16:25","17:10"],["17:20","18:05"]] },
+    { label:"第五大节", period:"09-10节", slots:[["19:10","19:55"],["20:05","20:50"]] },
+    { label:"第六大节", period:"11-12节", slots:[["21:00","21:45"], null] }
+  ]
+};
+
+/* 按当前日期自动判定季节：5月1日-9月30日用夏季作息，其余用春秋冬季作息 */
+function getSeason(){
+  var m = (new Date()).getMonth() + 1;
+  return (m >= 5 && m <= 9) ? "summer" : "other";
+}
+
+/* 把 6 大节（每大节 2 小节）展平为 12 个单节行 */
+function flatSchedule(schedule){
+  var rows = [];
+  for(var s=0;s<schedule.length;s++){
+    var seg = schedule[s];
+    for(var k=0;k<seg.slots.length;k++){
+      var t = seg.slots[k];
+      rows.push({
+        session: s+1,          // 大节号 1-6
+        slot: k,               // 大节内小节序号 0/1
+        label: seg.label,      // 大节名
+        period: seg.period,    // 小节区间名
+        time: (t) ? (t[0] + "-" + t[1]) : ""   // 无安排的小节时间留空
+      });
+    }
+  }
+  return rows;
+}
+
+/* ================= 默认课表（来自 xls 网格数据，按周次段拆分，session=大节号=连堂两节） ================= */
+function defaultCourses(){
+  return [
+    // 星期一
+    { name:"民航客舱设备操作与管理", teacher:"李阳", day:1, session:2, weeks:[[1,9]], location:"弘毅楼220", custom:false },
+    { name:"民航客舱设备操作与管理", teacher:"李阳", day:1, session:2, weeks:[[10,12]], location:"航空模拟仓", custom:false },
+    { name:"民航商务运营管理", teacher:"袁帅", day:1, session:3, weeks:[[1,12]], location:"弘毅楼420", custom:false },
+    { name:"大学体育（三）·篮球1", teacher:"黄国华", day:1, session:4, weeks:[[1,16]], location:"田径场", custom:false },
+    { name:"航空文化项目策划", teacher:"盘城", day:1, session:5, weeks:[[1,16]], location:"弘毅楼315智慧教室", custom:false },
+    // 星期二
+    { name:"西方文化概论", teacher:"黄萌", day:2, session:2, weeks:[[1,16]], location:"弘毅楼103", custom:false },
+    { name:"马克思主义基本原理概论", teacher:"高鹏", day:2, session:3, weeks:[[1,10]], location:"明德楼305（模拟法庭）", custom:false },
+    { name:"形象与造型", teacher:"张桃陶", day:2, session:5, weeks:[[1,4]], location:"弘毅楼103", custom:false },
+    { name:"形象与造型", teacher:"张桃陶", day:2, session:5, weeks:[[5,5]], location:"弘毅楼107（化妆室）", custom:false },
+    { name:"形象与造型", teacher:"龙俊君", day:2, session:5, weeks:[[6,8]], location:"弘毅楼107（化妆室）", custom:false },
+    // 星期三
+    { name:"航空服务英语（上）", teacher:"郑毅", day:3, session:1, weeks:[[1,12]], location:"弘毅楼117", custom:false },
+    { name:"民航商务运营管理", teacher:"袁帅", day:3, session:3, weeks:[[1,12]], location:"弘毅楼420", custom:false },
+    { name:"形势与政策（三）", teacher:"高鹏/肖文涛", day:3, session:4, weeks:[[11,12]], location:"明德楼305（模拟法庭）", custom:false },
+    // 星期四
+    { name:"民航客舱设备操作与管理", teacher:"李阳", day:4, session:2, weeks:[[10,12]], location:"航空模拟仓", custom:false },
+    { name:"民航客舱设备操作与管理", teacher:"李阳", day:4, session:3, weeks:[[1,9]], location:"弘毅楼220", custom:false },
+    { name:"马克思主义基本原理概论", teacher:"高鹏", day:4, session:4, weeks:[[1,10]], location:"明德楼305（模拟法庭）", custom:false },
+    { name:"形势与政策（三）", teacher:"高鹏/肖文涛", day:4, session:4, weeks:[[11,12]], location:"明德楼305（模拟法庭）", custom:false },
+    // 星期五
+    { name:"播音主持艺术", teacher:"李超", day:5, session:1, weeks:[[1,16]], location:"弘毅楼103", custom:false },
+    { name:"航空服务英语（上）", teacher:"郑毅", day:5, session:2, weeks:[[1,12]], location:"弘毅楼117", custom:false },
+    { name:"舞蹈与剧目", teacher:"刘强", day:5, session:3, weeks:[[1,16]], location:"训练馆形体房", custom:false }
+  ];
+}
+
+/* ================= 状态与持久化 ================= */
+var STORE_KEY = "hnkj_timetable_v2";
+var WEEK_KEY = "hnkj_week_v2";
+var BROWSE_KEY = "hnkj_browse_v2";   // 是否处于"临时浏览"状态（跨刷新保留）
+
+/* 学期参数集中配置：换学期只改这一处 */
+var SEMESTER = {
+  firstMonday: new Date(2026, 8, 7),   // 第 1 周周一 = 2026-09-07
+  totalWeeks: 16,
+  label: "2026-2027 学年 · 第 1 学期"
+};
+var TOTAL_WEEKS = SEMESTER.totalWeeks;
+var FIRST_MONDAY = SEMESTER.firstMonday;
+
+var courses = [];
+var season = getSeason();   // 随日期自动判定（夏季 / 春秋冬季）
+var currentWeek = 1;
+var editId = null;          // 非空表示"编辑已有课程"
+var manualBrowse = false;
+var noticeTimer = null;
+var AUTO_CHECK_INTERVAL = 600000;
+
+/* 马卡龙配色 [深色字, 浅色底]：16 色 */
+var palette = [
+  ["#e8839e","#ffe3ec"], ["#5aa897","#ddf2ec"], ["#f0a24b","#fdeedd"],
+  ["#9d7bd8","#ece2ff"], ["#6aa8f0","#e1efff"], ["#f2877d","#ffe4df"],
+  ["#4fc0d0","#dbf4f8"], ["#c98ab0","#f9e9f5"], ["#6f9e4f","#e8f2dd"],
+  ["#d9822b","#fbeedb"], ["#7a6ac4","#e7e3fb"], ["#3aa8a0","#d9f0ee"],
+  ["#d4577f","#fcdfe8"], ["#8a7355","#efe8dc"], ["#5573b8","#dee7f7"],
+  ["#a86a9c","#f3e3f0"]
+];
+
+/* 配色分配：按课程名排序后依次取色轮转。
+   原实现按名字 hash 取模，8 色板配 19 门课必然撞色；轮转可保证课程数 ≤16 时零重复。 */
+var colorMap = {};
+function rebuildColorMap(){
+  var seen = {}, keys = [];
+  for(var i=0;i<courses.length;i++){
+    var n = courses[i].name;
+    if(!seen[n]){ seen[n] = 1; keys.push(n); }
+  }
+  keys.sort();
+  colorMap = {};
+  for(var j=0;j<keys.length;j++) colorMap[keys[j]] = palette[j % palette.length];
+}
+function colorFor(name){
+  if(colorMap[name]) return colorMap[name];
+  // 兜底：colorMap 尚未构建时（如渲染前调用）退回 hash 取色
+  var h = 0;
+  for(var i=0;i<name.length;i++){ h = (h*31 + name.charCodeAt(i)) >>> 0; }
+  return palette[h % palette.length];
+}
+
+/* ---- localStorage 安全读写：无痕模式 / 配额满 / 数据被污染都不会白屏 ---- */
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } }
+
+/* 逐条校验并规范化：字段缺失/越界一律修正或丢弃该条，保证 render() 永远不会因脏数据崩溃 */
+function sanitizeCourses(arr){
+  var out = [];
+  for(var i=0;i<arr.length;i++){
+    var c = arr[i];
+    if(!c || typeof c !== "object") continue;
+    if(typeof c.name !== "string" || !c.name.trim()) continue;
+    var day = parseInt(c.day,10);
+    if(!(day>=1 && day<=7)) continue;
+    var ses = parseInt(c.session,10);
+    if(!(ses>=1 && ses<=6)) continue;
+    var slot = (c.slot===undefined || c.slot===null) ? undefined : parseInt(c.slot,10);
+    if(slot!==undefined && slot!==0 && slot!==1) slot = undefined;
+    var weeks = [];
+    if(Array.isArray(c.weeks)){
+      for(var w=0;w<c.weeks.length;w++){
+        var rg = c.weeks[w];
+        if(!Array.isArray(rg) || rg.length < 2) continue;
+        var a = parseInt(rg[0],10), b = parseInt(rg[1],10);
+        if(isNaN(a) || isNaN(b)) continue;
+        if(a>b){ var t=a; a=b; b=t; }
+        a = Math.max(1, Math.min(TOTAL_WEEKS, a));
+        b = Math.max(1, Math.min(TOTAL_WEEKS, b));
+        if(a<=b) weeks.push([a,b]);
+      }
+    }
+    out.push({
+      id: (typeof c.id === "string" && c.id) ? c.id : ("def_"+i),
+      name: c.name,
+      teacher: (typeof c.teacher === "string") ? c.teacher : "",
+      day: day, session: ses, slot: slot,
+      weeks: weeks,
+      location: (typeof c.location === "string") ? c.location : "",
+      custom: !!c.custom
+    });
+  }
+  if(!out.length) return withId(defaultCourses());   // 全脏则退回默认课表，而不是空页面
+  return out;
+}
+
+function load(){
+  season = getSeason();   // 每次打开页面按当前日期自动判定
+  var raw = lsGet(STORE_KEY);
+  var ok = false;
+  if(raw){
+    try{
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)){ courses = sanitizeCourses(parsed); ok = true; }
+    }catch(e){ ok = false; }
+  }
+  if(!ok){
+    courses = withId(defaultCourses());
+    if(!save()) showNotice("浏览器存储不可用（可能是无痕模式），本次课表不会被保存", "info");
+  }
+
+  // 恢复上次浏览的周次（原来 WEEK_KEY 只写不读，刷新就跳回本周）
+  var realW = getDefaultWeek();
+  var savedW = parseInt(lsGet(WEEK_KEY), 10);
+  var savedBrowse = lsGet(BROWSE_KEY) === "1";
+  if(savedBrowse && savedW>=1 && savedW<=TOTAL_WEEKS && savedW!==realW){
+    currentWeek = savedW;
+    manualBrowse = true;
+    showNotice("当前为临时浏览第"+savedW+"周，点「回到本周」可返回真实当周", "info");
+  }else{
+    currentWeek = realW;
+    manualBrowse = false;
+  }
+  lsSet(WEEK_KEY, String(currentWeek));
+  syncWeekTxt();
+  document.getElementById("weekLabel").textContent = String(currentWeek);
+  document.getElementById("semesterInfo").textContent = SEMESTER.label;
+  updateToday();
+  setInterval(updateToday, 60000);
+  window.addEventListener("focus", updateToday);
+  setInterval(checkAutoWeek, AUTO_CHECK_INTERVAL);
+  window.addEventListener("focus", checkAutoWeek);
+}
+function withId(arr){
+  return arr.map(function(c,i){ if(c.id===undefined) c.id = "def_"+i; return c; });
+}
+function save(){
+  var ok = lsSet(STORE_KEY, JSON.stringify(courses));
+  if(!ok) showNotice("保存失败：浏览器存储不可用或已写满，请改用「导出备份」保存数据", "info");
+  return ok;
+}
+
+function getDefaultWeek(){
+  try{
+    var now = new Date(); now.setHours(0,0,0,0);
+    var first = new Date(FIRST_MONDAY); first.setHours(0,0,0,0);
+    var diffDays = Math.round((now - first) / 86400000);
+    if(isNaN(diffDays)) return 1;
+    var wk = Math.floor(diffDays/7) + 1;
+    if(wk<1) wk=1;
+    if(wk>TOTAL_WEEKS) wk=TOTAL_WEEKS;
+    return wk;
+  }catch(e){ return 1; }
+}
+/* ================= 顶部日期与星期（随真实日期动态更新） ================= */
+var CN_WEEK = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+function updateToday(){
+  var el = document.getElementById("todayInfo");
+  if(!el) return;
+  var d = new Date();
+  el.textContent = d.getFullYear() + "年" + (d.getMonth()+1) + "月" + d.getDate() + "日 " + CN_WEEK[d.getDay()];
+  // 跨天自动轮换：真实日期变化时重渲染，让 today 列高亮/描边自动移到新的一天
+  var dayKey = d.getFullYear() + "/" + (d.getMonth()+1) + "/" + d.getDate();
+  if(updateToday.lastDay === undefined) updateToday.lastDay = dayKey;
+  else if(dayKey !== updateToday.lastDay){
+    updateToday.lastDay = dayKey;
+    if(typeof render === "function") render();
+  }
+}
+
+/* ================= 通用浮层定位：fixed + 视口边缘避让，下方放不下则上方弹出、内部滚动 ================= */
+function positionDrop(trigger, drop){
+  if(!trigger || !drop) return;
+  var rect = trigger.getBoundingClientRect();
+  var vw = document.documentElement.clientWidth || window.innerWidth;
+  var vh = document.documentElement.clientHeight || window.innerHeight;
+  var m = 8;
+  drop.style.left = "0px";
+  drop.style.top = "0px";
+  var dw = drop.offsetWidth, dh = drop.offsetHeight;
+  var left = Math.round(rect.left);
+  if(left + dw > vw - m) left = Math.max(m, vw - dw - m);
+  left = Math.max(m, left);
+  var top;
+  if(rect.bottom + dh + m <= vh){
+    top = rect.bottom + m;
+  }else if(rect.top - dh - m >= m){
+    top = rect.top - dh - m;
+  }else{
+    top = m;
+    drop.style.maxHeight = Math.max(120, Math.min(dh, rect.top - m - m)) + "px";
+  }
+  drop.style.left = left + "px";
+  drop.style.top = top + "px";
+}
+
+/* ================= 通用马卡龙胶囊下拉组件（弹窗内「星期」「节次」共用，「当前周」同款风格） ================= */
+function initFlowSel(cfg){
+  var wrap = document.getElementById(cfg.wrap);
+  var trigger = document.getElementById(cfg.trigger);
+  var drop = document.getElementById(cfg.drop);
+  var txt = document.getElementById(cfg.txt);
+  if(!wrap || !trigger || !drop) return null;
+  var val = null;
+  var open = false;
+  function setOpen(v){
+    open = v;
+    drop.classList.toggle("open", v);
+    if(trigger) trigger.setAttribute("aria-expanded", v ? "true" : "false");
+    if(v) positionDrop(trigger, drop);
+  }
+  trigger.addEventListener("click", function(e){
+    e.stopPropagation();
+    setOpen(!open);
+  });
+  trigger.addEventListener("keydown", function(e){
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); setOpen(!open); }
+    else if(e.key === "Escape") setOpen(false);
+  });
+  drop.addEventListener("click", function(e){
+    var btn = e.target.closest(".flow-opt");
+    if(!btn) return;
+    var v2 = btn.getAttribute("data-v");
+    setOpen(false);
+    if(v2 !== null && v2 !== undefined) setVal(v2);
+  });
+  document.addEventListener("click", function(e){
+    if(open && !wrap.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && open) setOpen(false);
+  });
+  // 下拉是 position:fixed，而 modal 自身在矮屏时会内部滚动；
+  // 不重新定位的话触发器滚走了、浮层还留在原地。捕获阶段能收到任意祖先的 scroll（scroll 不冒泡）。
+  window.addEventListener("scroll", function(){ if(open) positionDrop(trigger, drop); }, true);
+  function labelFor(v){
+    var opts = drop.querySelectorAll(".flow-opt");
+    for(var i=0;i<opts.length;i++){
+      if(String(opts[i].getAttribute("data-v")) === String(v)) return opts[i].textContent;
+    }
+    return "";
+  }
+  function setVal(v){
+    val = v;
+    if(txt) txt.textContent = labelFor(v);
+    var opts = drop.querySelectorAll(".flow-opt");
+    for(var i=0;i<opts.length;i++){
+      var act = (String(opts[i].getAttribute("data-v")) === String(v));
+      opts[i].classList.toggle("active", act);
+      opts[i].setAttribute("aria-selected", act ? "true" : "false");
+    }
+    return api;
+  }
+  var api = {
+    fill: function(items){
+      var h = "";
+      for(var i=0;i<items.length;i++){
+        h += '<button type="button" class="flow-opt" role="option" data-v="'+items[i].v+'" aria-selected="false">'+items[i].label+'</button>';
+      }
+      drop.innerHTML = h;
+      if(val === null && items.length) setVal(items[0].v);
+      return api;
+    },
+    setVal: setVal,
+    getVal: function(){ return val; }
+  };
+  return api;
+}
+
+/* 弹窗「星期」选项 */
+var DAYS = [["1","星期一"],["2","星期二"],["3","星期三"],["4","星期四"],["5","星期五"],["6","星期六"],["7","星期日"]];
+
+function syncWeekTxt(){
+  var txt = document.getElementById("weekTriggerTxt");
+  if(txt) txt.textContent = "第" + currentWeek + "周";
+}
+(function bindWeekStep(){
+  var prev = document.getElementById("weekPrev");
+  var next = document.getElementById("weekNext");
+  if(!prev || !next) return;
+  prev.addEventListener("click", function(){ setWeek(currentWeek - 1); });
+  next.addEventListener("click", function(){ setWeek(currentWeek + 1); });
+})();
+function setWeek(w){
+  w = parseInt(w,10);
+  if(isNaN(w)) return;
+  if(w<1) w=1; if(w>TOTAL_WEEKS) w=TOTAL_WEEKS;
+  currentWeek = w;
+  manualBrowse = true;
+  lsSet(WEEK_KEY, String(w));
+  lsSet(BROWSE_KEY, "1");
+  document.getElementById("weekLabel").textContent = String(w);
+  syncWeekTxt();
+  showNotice("当前为临时浏览第"+w+"周", "info", { label:"回到本周", fn:goToRealWeek });
+  render();
+}
+function goToRealWeek(){
+  var realW = getDefaultWeek();
+  currentWeek = realW;
+  manualBrowse = false;
+  lsSet(WEEK_KEY, String(realW));
+  lsSet(BROWSE_KEY, "0");
+  document.getElementById("weekLabel").textContent = String(realW);
+  syncWeekTxt();
+  showNotice("已回到本周 · 第 "+realW+" 周", "ok");
+  render();
+}
+function checkAutoWeek(){
+  // 季节随日期自动变化（即使处于临时浏览周次，作息也始终跟随当前日期）
+  var ns = getSeason();
+  if(ns !== season){
+    season = ns;
+    render();
+  }
+  if(manualBrowse) return;
+  var realW = getDefaultWeek();
+  if(realW === currentWeek) return;
+  currentWeek = realW;
+  lsSet(WEEK_KEY, String(realW));
+  document.getElementById("weekLabel").textContent = String(realW);
+  syncWeekTxt();
+  showNotice("已自动更新到第 "+realW+" 周", "ok");
+  render();
+}
+/* 通知条：msg 文本 + 可选操作按钮（如"撤销"）+ 关闭按钮
+   type=ok 6 秒自动消失；type=info 属状态提示，常驻直到被替换或手动关闭 */
+function showNotice(msg, type, action){
+  var el = document.getElementById("notice");
+  if(!el) return;
+  if(noticeTimer){ clearTimeout(noticeTimer); noticeTimer = null; }
+  el.innerHTML = "";
+  var span = document.createElement("span");
+  span.textContent = msg;
+  el.appendChild(span);
+  if(action && action.label && typeof action.fn === "function"){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "n-act"; b.textContent = action.label;
+    b.addEventListener("click", function(){ el.className = "notice"; action.fn(); });
+    el.appendChild(b);
+  }
+  var x = document.createElement("button");
+  x.type = "button"; x.className = "n-close"; x.textContent = "×"; x.title = "关闭";
+  x.addEventListener("click", function(){ el.className = "notice"; });
+  el.appendChild(x);
+  el.className = "notice show " + (type==="ok" ? "ok" : "info");
+  if(type === "info") return;
+  noticeTimer = setTimeout(function(){ el.className = "notice"; }, 6000);
+}
+
+/* 自定义确认框：替代浏览器原生 confirm，与页面粉色调一致 */
+function askConfirm(msg){
+  return new Promise(function(resolve){
+    var mask = document.getElementById("confirmMask");
+    var msgEl = document.getElementById("confirmMsg");
+    var yes = document.getElementById("confirmYes");
+    var no = document.getElementById("confirmNo");
+    if(!mask || !yes || !no) { resolve(window.confirm(msg)); return; }
+    msgEl.textContent = msg;
+    mask.classList.add("show");
+    function done(v){
+      mask.classList.remove("show");
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+      mask.removeEventListener("click", onMask);
+      document.removeEventListener("keydown", onKey);
+      resolve(v);
+    }
+    function onYes(){ done(true); }
+    function onNo(){ done(false); }
+    function onMask(e){ if(e.target === mask) done(false); }
+    function onKey(e){ if(e.key === "Escape") done(false); }
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+    mask.addEventListener("click", onMask);
+    document.addEventListener("keydown", onKey);
+    yes.focus();
+  });
+}
+
+/* ---- 删除 / 重置：操作前存快照，通知条上提供"撤销" ---- */
+var undoSnapshot = null;
+function snapshot(){ return JSON.parse(JSON.stringify(courses)); }
+function delCourse(id){
+  var target = null;
+  for(var i=0;i<courses.length;i++) if(courses[i].id === id){ target = courses[i]; break; }
+  if(!target) return;
+  askConfirm("确定删除「" + target.name + "」吗？").then(function(ok){
+    if(!ok) return;
+    var prev = snapshot();
+    courses = courses.filter(function(c){ return c.id !== id; });
+    save(); render();
+    showNotice("已删除「"+target.name+"」", "ok", { label:"撤销", fn:function(){
+      courses = prev; save(); render(); showNotice("已恢复「"+target.name+"」", "ok");
+    }});
+  });
+}
+function deleteFromModal(){
+  if(!editId) return;
+  var id = editId;
+  closeModal();
+  delCourse(id);
+}
+function resetDefault(){
+  askConfirm("确定恢复为默认课表吗？将清除所有自定义修改。").then(function(ok){
+    if(!ok) return;
+    var prev = snapshot();
+    courses = withId(defaultCourses());
+    save(); render();
+    showNotice("已恢复默认课表", "ok", { label:"撤销", fn:function(){
+      courses = prev; save(); render(); showNotice("已撤销恢复操作", "ok");
+    }});
+  });
+}
+
+/* ================= 渲染：12 个单节行 ================= */
+var dayNames = ["","星期一","星期二","星期三","星期四","星期五","星期六","星期日"];
+
+/* 按 (星期, 大节, 小节) 建一次索引，替代 12×7 循环里 84 次全量 filter */
+function buildWeekIndex(){
+  var idx = {};
+  for(var i=0;i<courses.length;i++){
+    var c = courses[i];
+    if(!inWeek(c.weeks, currentWeek)) continue;
+    var k = c.day + "_" + c.session + "_" + ((c.slot===undefined || c.slot===null) ? "B" : c.slot);
+    if(!idx[k]) idx[k] = [];
+    idx[k].push(c);
+  }
+  return idx;
+}
+
+function render(){
+  var todayIdx = (new Date().getDay()===0) ? 7 : new Date().getDay(); // 0=周日 -> 周日列7
+  rebuildColorMap();
+  var th = '<th>第'+currentWeek+'周</th>';
+  for(var d=1;d<=7;d++){
+    th += '<th'+(d===todayIdx?' class="today"':'')+'>'+dayNames[d]+'</th>';
+  }
+  document.getElementById("thead").innerHTML = th;
+  document.getElementById("seasonLabel").textContent = (season==="summer")?"夏季":"春秋冬季";
+
+  var rows = flatSchedule(SCHEDULES[season]);
+  var body = document.getElementById("tbody");
+  var idx = buildWeekIndex();
+  var html = '';
+  var spun = [false,false,false,false,false,false,false,false]; // 标记被上一行 rowspan 占用的列
+  for(var r=0;r<rows.length;r++){
+    var row = rows[r];
+    var isFirst = (row.slot===0);
+    html += '<tr>';
+    // 最左列：大节名 + 单节编号 + 单节时间
+    html += '<td class="session">';
+    html += '<div class="grp">'+(isFirst ? esc(row.label)+'<br>('+row.period+')' : '&nbsp;')+'</div>';
+    html += '<div class="nm">第'+(r+1)+'节</div>';
+    html += '<div class="time">'+row.time+'</div>';
+    html += '</td>';
+    for(var d=1;d<=7;d++){
+      if(spun[d]){
+        spun[d]=false;
+        continue; // 该列已被上一小节行的合并色块(跨 2 行 rowspan)占据，浏览器自动保留列位置；不能再输出 td，否则会新增一列导致错位
+      }
+      var lien = idx[d+"_"+row.session+"_B"] || [];   // 大节连堂课
+      var s0 = idx[d+"_"+row.session+"_0"] || [];
+      var s1 = idx[d+"_"+row.session+"_1"] || [];
+      var merged = (row.slot===0) && lien.length>0;
+      if(merged){
+        // 连堂：合并成一整块跨 2 行色块；第 2 小节行由 spun 占位
+        var singles = s0.concat(s1); // 同大节内的单节自定义课也并入此块（注小节时间）
+        var seg = SCHEDULES[season][row.session-1];
+        var mtime = '';
+        if(seg && seg.slots && seg.slots.length){
+          mtime = seg.slots.filter(Boolean).map(function(t){ return t[0]+"-"+t[1]; }).join('<br>');
+        }
+        html += '<td class="cell merged" rowspan="2">';
+        html += '<div class="mtimes">'+mtime+'</div>';
+        lien.forEach(function(c){
+          var col = colorFor(c.name);
+          var cid = c.id;
+          html += '<div class="course merged-card" data-id="'+esc(cid)+'" title="点击编辑" style="background:'+col[1]+'">';
+          html += '<button class="del" title="删除课程" data-id="'+esc(cid)+'">×</button>';
+          if(c.custom) html += '<span class="heart" title="自定义课程">♡</span>';
+          html += '<div class="cname" style="color:'+col[0]+'">'+esc(c.name)+'</div>';
+          html += courseCardLines(c);
+          html += '</div>';
+        });
+        singles.forEach(function(c){
+          var col = colorFor(c.name);
+          var cid = c.id;
+          var seg2 = SCHEDULES[season][row.session-1];
+          var st = (seg2 && seg2.slots && seg2.slots[c.slot]) ? seg2.slots[c.slot][0]+'-'+seg2.slots[c.slot][1] : '';
+          html += '<div class="course mini" data-id="'+esc(cid)+'" title="点击编辑" style="background:'+col[1]+';color:'+col[0]+'">';
+          html += '<button class="del" title="删除课程" data-id="'+esc(cid)+'">×</button>';
+          html += '<span class="heart" title="自定义课程">♡</span>';
+          html += '<span class="cname">'+esc(c.name)+'</span>';
+          html += '<span class="mint">'+(c.slot===0?'0'+(row.session*2-1):'0'+(row.session*2))+' 节'+(st?' ('+esc(st)+')':'')+'</span>';
+          if(c.teacher) html += '<span class="mline">'+esc(c.teacher)+'</span>';
+          var mwt = weekText(c.weeks);
+          if(mwt) html += '<span class="mline">'+esc(mwt)+'</span>';
+          if(c.location) html += '<span class="mline">'+esc(c.location)+'</span>';
+          html += '</div>';
+        });
+        html += '</td>';
+        spun[d] = true;
+      }else{
+        // 无连堂：仅渲染本小节对应的单节自定义课（或留空）
+        var list = (row.slot===0) ? s0 : s1;
+        html += '<td class="cell">';
+        list.forEach(function(c){
+          var col = colorFor(c.name);
+          var cid = c.id;
+          html += '<div class="course" data-id="'+esc(cid)+'" title="点击编辑" style="background:'+col[1]+'">';
+          html += '<button class="del" title="删除课程" data-id="'+esc(cid)+'">×</button>';
+          if(c.custom) html += '<span class="heart" title="自定义课程">♡</span>';
+          html += '<div class="cname" style="color:'+col[0]+'">'+esc(c.name)+'</div>';
+          html += courseCardLines(c);
+          html += '</div>';
+        });
+        html += '</td>';
+      }
+    }
+    html += '</tr>';
+  }
+  body.innerHTML = html;
+  positionTodayFrame();
+}
+/* 今日整列描边框：按真实日期定位今天列，上沿含表头、贯穿到底；offset 坐标随横向滚动天然同步，resize 重算 */
+function positionTodayFrame(){
+  var f = document.getElementById("todayFrame");
+  var tbl = document.getElementById("tt");
+  var tbody = document.getElementById("tbody");
+  if(!f) return;
+  // 仅当查看「真实本周」时显示今天整列粉框：手动切到其他周（manualBrowse=true 或 currentWeek≠真实周）时隐藏
+  var isRealWeek = (manualBrowse === false) && (currentWeek === getDefaultWeek());
+  if(!isRealWeek || !tbl || !tbody || !tbody.rows.length){
+    f.style.display = "none";
+    return;
+  }
+  var d = new Date();
+  var idx = (d.getDay() === 0) ? 7 : d.getDay();
+  var row0 = tbody.rows[0];
+  if(!row0 || row0.cells.length < 8){ f.style.display = "none"; return; }
+  var sessionW = row0.cells[0].offsetWidth;         // 第一列「节次/时间」宽度（随视口自适应）
+  var colW = row0.cells[1].offsetWidth;             // 周一~周日 7 列等宽
+  var left = tbl.offsetLeft + sessionW + (idx - 1) * colW;
+  f.style.display = "block";
+  f.style.left = left + "px";
+  f.style.top = tbl.offsetTop + "px";
+  f.style.width = colW + "px";
+  f.style.height = tbl.offsetHeight + "px";
+}
+window.addEventListener("resize", positionTodayFrame);
+function inWeek(weeks, wk){
+  if(!weeks || !weeks.length) return true;
+  for(var i=0;i<weeks.length;i++){
+    if(wk>=weeks[i][0] && wk<=weeks[i][1]) return true;
+  }
+  return false;
+}
+/* 课程卡片信息分行（课名下方：老师/周数/地点 各占一行，无信息不产生空行） */
+function courseCardLines(c){
+  var html = "";
+  if(c.teacher) html += '<div class="cline">'+esc(c.teacher)+'</div>';
+  var wt = weekText(c.weeks);
+  if(wt) html += '<div class="cline">'+esc(wt)+'</div>';
+  if(c.location) html += '<div class="cline">'+esc(c.location)+'</div>';
+  return html;
+}
+function weekText(weeks){
+  if(!weeks || !weeks.length) return "";
+  return weeks.map(function(r){
+    return (r[0]===r[1]) ? (r[0]+"周") : (r[0]+"-"+r[1]+"周");
+  }).join("、");
+}
+function esc(s){
+  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ================= 作息切换（无手动按钮，按日期自动判定） ================= */
+
+/* ================= 添加 / 删除课程 ================= */
+/* 「添加方式」：大课（按6个大节整体添加、连堂色块）/ 小课（按12个单节添加、单节小卡） */
+var addMode = "big";
+var dayFlow = null;   // 弹窗「星期」胶囊下拉组件
+var sessFlow = null;  // 弹窗「节次」胶囊下拉组件
+
+function setAddMode(m){
+  addMode = (m === "small") ? "small" : "big";
+  var btns = document.querySelectorAll("#modeGroup .mode-btn");
+  for(var i=0;i<btns.length;i++){
+    btns[i].classList.toggle("active", btns[i].getAttribute("data-mode") === addMode);
+  }
+  fillSessionSel();
+}
+
+/* 按当前时令与添加方式填充「节次」下拉：大课=6大节(带小节时间)，小课=12单节(带各节时间) */
+function fillSessionSel(){
+  if(!sessFlow) return;
+  var items = [];
+  if(addMode === "big"){
+    var sched = SCHEDULES[season];
+    for(var s=0;s<sched.length;s++){
+      var seg = sched[s];
+      var times = (seg.slots || []).filter(Boolean).map(function(t){ return t[0]+"-"+t[1]; }).join("、");
+      items.push({ v:String(s+1), label: seg.label + " " + seg.period + "  " + (times || "无安排") });
+    }
+  }else{
+    var rows = flatSchedule(SCHEDULES[season]);
+    for(var i=0;i<rows.length;i++){
+      if(!rows[i].time) continue;   // 第六大节第二节无安排，不允许往这里加课
+      items.push({ v:String(i+1), label: rows[i].label + " · 第"+(i+1)+"节 (" + rows[i].time + ")" });
+    }
+  }
+  sessFlow.fill(items);
+  if(items.length) sessFlow.setVal(items[0].v);
+}
+
+var lastDay = "1";   // 记住上次选择的星期，连续添加时少点一次
+
+function openAdd(){
+  editId = null;
+  document.getElementById("modalTitle").textContent = "✨ 添加课程";
+  document.getElementById("btnModalSave").textContent = "保存";
+  document.getElementById("btnModalDel").style.display = "none";
+  var f = ["fName","fTeacher","fWeeks","fLocation"];
+  for(var i=0;i<f.length;i++) document.getElementById(f[i]).value="";
+  clearFieldErrs(); hideConflict();
+  setAddMode("big");
+  if(dayFlow) dayFlow.setVal(lastDay);
+  fillSessionSel();
+  document.getElementById("mask").classList.add("show");
+}
+
+/* 点击课程卡片进入编辑：复用同一个弹窗，editId 非空即为编辑态 */
+function openEdit(id){
+  var c = null;
+  for(var i=0;i<courses.length;i++){ if(courses[i].id === id){ c = courses[i]; break; } }
+  if(!c) return;
+  editId = id;
+  document.getElementById("modalTitle").textContent = "✏️ 编辑课程";
+  document.getElementById("btnModalSave").textContent = "保存修改";
+  document.getElementById("btnModalDel").style.display = "inline-block";
+  document.getElementById("fName").value = c.name || "";
+  document.getElementById("fTeacher").value = c.teacher || "";
+  document.getElementById("fWeeks").value = (c.weeks||[]).map(function(r){
+    return (r[0]===r[1]) ? String(r[0]) : (r[0]+"-"+r[1]);
+  }).join(",");
+  document.getElementById("fLocation").value = c.location || "";
+  clearFieldErrs(); hideConflict();
+  setAddMode((c.slot===undefined || c.slot===null) ? "big" : "small");
+  if(dayFlow) dayFlow.setVal(String(c.day));
+  if(sessFlow){
+    sessFlow.setVal((c.slot===undefined || c.slot===null) ? String(c.session) : String(c.session*2-1+c.slot));
+  }
+  document.getElementById("mask").classList.add("show");
+}
+
+function closeModal(){ document.getElementById("mask").classList.remove("show"); }
+document.getElementById("mask").addEventListener("click", function(e){
+  if(e.target.id==="mask") closeModal();
+});
+
+/* ---- 表单校验提示（替代原生 alert） ---- */
+function clearFieldErrs(){
+  ["errName","errWeeks"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.className = "field-err";
+  });
+}
+function showFieldErr(id, msg){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = msg;
+  el.className = "field-err show";
+}
+function hideConflict(){
+  var b = document.getElementById("conflictWarn");
+  if(b) b.className = "conflict-warn";
+}
+
+/* 解析周次：返回 { ranges, invalid }
+   - 越界 / 无法识别的片段收集进 invalid 由调用方提示，绝不静默丢弃
+   - 结果排序并合并重叠或相邻区间，避免显示成「1-8周、5-16周」 */
+function parseWeeks(str){
+  var ranges = [], invalid = [];
+  var parts = String(str||"").split(/[,，、;；\s]+/);
+  for(var i=0;i<parts.length;i++){
+    var raw = parts[i].trim();
+    if(!raw) continue;
+    var p = raw.replace(/周/g,"").trim();
+    var m = p.match(/^(\d+)\s*[-~至]\s*(\d+)$/);
+    var a, b;
+    if(m){ a = parseInt(m[1],10); b = parseInt(m[2],10); }
+    else if(/^\d+$/.test(p)){ a = b = parseInt(p,10); }
+    else { invalid.push(raw); continue; }
+    if(isNaN(a) || isNaN(b)){ invalid.push(raw); continue; }
+    if(a>b){ var t=a; a=b; b=t; }
+    if(a<1 || b>TOTAL_WEEKS){ invalid.push(raw); continue; }
+    ranges.push([a,b]);
+  }
+  ranges.sort(function(x,y){ return (x[0]-y[0]) || (x[1]-y[1]); });
+  var merged = [];
+  for(var k=0;k<ranges.length;k++){
+    var last = merged[merged.length-1];
+    if(last && ranges[k][0] <= last[1] + 1) last[1] = Math.max(last[1], ranges[k][1]);
+    else merged.push([ranges[k][0], ranges[k][1]]);
+  }
+  return { ranges: merged, invalid: invalid };
+}
+
+/* ---- 时间冲突检测 ---- */
+/* 大课（slot 未定义）占满整个大节，与该大节内任意小节都冲突 */
+function slotOverlap(a, b){
+  if(a.session !== b.session) return false;
+  var as = (a.slot===undefined || a.slot===null) ? "B" : a.slot;
+  var bs = (b.slot===undefined || b.slot===null) ? "B" : b.slot;
+  if(as === "B" || bs === "B") return true;
+  return as === bs;
+}
+function weeksOverlap(w1, w2){
+  if(!w1 || !w1.length || !w2 || !w2.length) return true;
+  for(var i=0;i<w1.length;i++){
+    for(var j=0;j<w2.length;j++){
+      if(w1[i][0] <= w2[j][1] && w2[j][0] <= w1[i][1]) return true;
+    }
+  }
+  return false;
+}
+function findConflicts(cand, ignoreId){
+  var out = [];
+  for(var i=0;i<courses.length;i++){
+    var c = courses[i];
+    if(c.id === ignoreId) continue;
+    if(c.day !== cand.day) continue;
+    if(!slotOverlap(cand, c)) continue;
+    if(!weeksOverlap(cand.weeks, c.weeks)) continue;
+    out.push(c);
+  }
+  return out;
+}
+function courseTimeText(c){
+  var seg = SCHEDULES[season][c.session-1];
+  if(!seg) return "";
+  if(c.slot===undefined || c.slot===null){
+    var ts = (seg.slots||[]).filter(Boolean).map(function(t){ return t[0]+"-"+t[1]; });
+    return seg.label + " " + (ts.join("、") || "");
+  }
+  var t = seg.slots[c.slot];
+  return "第"+(c.session*2-1+c.slot)+"节" + (t ? " ("+t[0]+"-"+t[1]+")" : "");
+}
+
+function saveCourse(force){
+  clearFieldErrs();
+  var name = document.getElementById("fName").value.trim();
+  var pw = parseWeeks(document.getElementById("fWeeks").value);
+  var bad = false;
+  if(!name){ showFieldErr("errName", "请填写课程名称"); bad = true; }
+  if(!pw.ranges.length){
+    showFieldErr("errWeeks", "请填写有效的上课周次，如 1-16 或 1-8,10-16（本学期共 1-"+TOTAL_WEEKS+" 周）");
+    bad = true;
+  }
+  if(bad){ hideConflict(); return; }
+  if(!dayFlow || !sessFlow){ showNotice("表单初始化异常，请刷新页面", "info"); return; }
+
+  var orig = null;
+  if(editId){
+    for(var q=0;q<courses.length;q++){ if(courses[q].id === editId){ orig = courses[q]; break; } }
+  }
+  var day = parseInt(dayFlow.getVal(),10);
+  if(!(day>=1 && day<=7)) day = 1;
+  var v = parseInt(sessFlow.getVal(),10);
+  var c = {
+    name: name,
+    teacher: document.getElementById("fTeacher").value.trim(),
+    day: day,
+    weeks: pw.ranges,
+    location: document.getElementById("fLocation").value.trim(),
+    custom: orig ? !!orig.custom : true
+  };
+  if(addMode === "big"){
+    // 大课：按第几大节（1-6）整体添加，渲染为跨两小节连堂色块（不写 slot）
+    if(!(v>=1 && v<=6)) v = 1;
+    c.session = v;
+    c.slot = undefined;
+  }else{
+    // 小课：按具体小节（1-12）添加，渲染为单节小卡（带 slot 0/1）
+    if(!(v>=1 && v<=12)) v = 1;
+    c.session = Math.floor((v-1)/2) + 1;  // 1-6 大节
+    c.slot = (v-1) % 2;                    // 0/1 小节
+  }
+  c.id = editId || ("cus_" + Date.now() + "_" + Math.floor(Math.random()*9999));
+  lastDay = String(day);
+
+  var warn = pw.invalid.length
+    ? ("已忽略无法识别或超出 1-"+TOTAL_WEEKS+" 周的部分：" + pw.invalid.join("、"))
+    : "";
+
+  if(!force){
+    var conflicts = findConflicts(c, editId);
+    if(conflicts.length){ showConflictWarn(c, conflicts, warn); return; }
+  }
+  hideConflict();
+  commitCourse(c, warn);
+}
+
+function showConflictWarn(c, conflicts, extraWarn){
+  var box = document.getElementById("conflictWarn");
+  if(!box) return;
+  var h = "<b>时间冲突</b>";
+  h += "「" + esc(c.name) + "」（" + esc(courseTimeText(c)) + " " + esc(weekText(c.weeks)) + "）与以下课程重叠：";
+  h += "<ul>";
+  for(var i=0;i<conflicts.length;i++){
+    h += "<li>" + esc(conflicts[i].name) + " · " + esc(courseTimeText(conflicts[i])) + " · " + esc(weekText(conflicts[i].weeks)) + "</li>";
+  }
+  h += "</ul>";
+  if(extraWarn) h += "<div style='margin-top:6px'>" + esc(extraWarn) + "</div>";
+  h += '<button type="button" class="cw-act" id="cwForce">仍要保存</button>';
+  box.innerHTML = h;
+  box.className = "conflict-warn show";
+  var btn = document.getElementById("cwForce");
+  if(btn) btn.addEventListener("click", function(){ hideConflict(); commitCourse(c, extraWarn); });
+}
+
+function commitCourse(c, warn){
+  var isEdit = !!editId;
+  if(isEdit){
+    for(var i=0;i<courses.length;i++){
+      if(courses[i].id === c.id){ courses[i] = c; break; }
+    }
+  }else{
+    courses.push(c);
+  }
+  editId = null;
+  save();
+  closeModal();
+  render();
+  if(warn) showNotice(warn, "info");
+  else showNotice(isEdit ? "已保存修改" : "已添加「"+c.name+"」", "ok");
+}
+
+/* ---- 导出 / 导入备份：localStorage 清缓存就没了，必须能落盘 ---- */
+function exportData(){
+  try{
+    var payload = { app:"hnkj-timetable", version:2, exportedAt:new Date().toISOString(), courses:courses };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "课程表备份_" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    showNotice("已导出备份文件（" + courses.length + " 门课）", "ok");
+  }catch(e){
+    showNotice("导出失败：" + e.message, "info");
+  }
+}
+function importData(input){
+  var file = input.files && input.files[0];
+  input.value = "";   // 允许连续导入同一个文件
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var data = null;
+    try{ data = JSON.parse(String(reader.result)); }
+    catch(e){ showNotice("导入失败：文件不是合法的 JSON", "info"); return; }
+    var list = Array.isArray(data) ? data : (data && Array.isArray(data.courses) ? data.courses : null);
+    if(!list){ showNotice("导入失败：文件里没有找到课程数据", "info"); return; }
+    var clean = sanitizeCourses(list);
+    if(!clean.length){ showNotice("导入失败：文件里没有有效课程", "info"); return; }
+    var prev = snapshot();
+    askConfirm("将用备份中的 " + clean.length + " 门课替换当前 " + courses.length + " 门课，确定吗？").then(function(ok){
+      if(!ok) return;
+      courses = clean;
+      save(); render();
+      showNotice("已导入 " + clean.length + " 门课", "ok", { label:"撤销", fn:function(){
+        courses = prev; save(); render(); showNotice("已撤销导入", "ok");
+      }});
+    });
+  };
+  reader.onerror = function(){ showNotice("导入失败：文件读取错误", "info"); };
+  reader.readAsText(file);
+}
+
+/* ================= 初始化 ================= */
+/* 事件委托：课程卡片用 data-id 标记，删掉 84 处内联 onclick，整表只挂一个监听器 */
+(function bindTableActions(){
+  var tbody = document.getElementById("tbody");
+  if(!tbody) return;
+  tbody.addEventListener("click", function(e){
+    var t = e.target;
+    if(!t || !t.closest) return;
+    var del = t.closest(".del");
+    if(del){
+      e.stopPropagation();
+      var did = del.getAttribute("data-id");
+      if(did) delCourse(did);
+      return;
+    }
+    var card = t.closest(".course");
+    if(card){
+      var cid = card.getAttribute("data-id");
+      if(cid) openEdit(cid);
+    }
+  });
+})();
+
+dayFlow = initFlowSel({ wrap:"fDayWrap", trigger:"fDayTrigger", drop:"fDayDrop", txt:"fDayTxt" });
+sessFlow = initFlowSel({ wrap:"fSessionWrap", trigger:"fSessionTrigger", drop:"fSessionDrop", txt:"fSessionTxt" });
+if(dayFlow){
+  dayFlow.fill(DAYS.map(function(d){ return { v:d[0], label:d[1] }; }));
+  dayFlow.setVal("1");
+}
+load();
+render();
+
+/* ================= 时间轴进度线：跟随当前真实时刻滚动 ================= */
+(function(){
+  var line = document.getElementById("nowLine");
+  var tag = document.getElementById("nowTag");
+  if(!line || !tag) return;
+  var wrap = document.querySelector(".tt-wrap");
+  var tbl = document.getElementById("tt");
+
+  function parseHM(s){
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(s||""));
+    return m ? (parseInt(m[1],10)*60 + parseInt(m[2],10)) : null;
+  }
+
+  function refresh(){
+    // 每次刷新都重新查询当前 tbody 的行引用：render() 会用 innerHTML 整体重建 tbody，
+    // 若沿用旧 NodeList，跨天/切周后会指向已从文档移除的旧 tr，getBoundingClientRect 恒为 0，进度线与标签消失。
+    var rowEls = tbl.querySelectorAll("#tbody tr");
+    if(!rowEls.length) { line.classList.remove("on"); return; }
+    var sched = SCHEDULES[getSeason()];
+    var rows = flatSchedule(sched);   // 12 单节行，与 tbody 顺序一致
+    var now = new Date();
+    var nowMin = now.getHours()*60 + now.getMinutes();
+    var hm = ("0"+now.getHours()).slice(-2) + ":" + ("0"+now.getMinutes()).slice(-2);
+
+    var wrapRect = wrap.getBoundingClientRect();
+    // 关键：.now-line 是 .tt-wrap 里的绝对定位元素，其坐标系是"内容坐标系"（不随滚动变化），
+    // 而 getBoundingClientRect() 给的是视口坐标。横向滚动后两者差一个 scrollLeft，
+    // 直接用视口坐标赋值会让偏移被算两遍、红线飞出表格。这里改用 offsetLeft/offsetWidth（内容坐标）。
+    var left = tbl.offsetLeft;
+    var width = tbl.offsetWidth;
+
+    // 按连续时间轴定位：now 落在哪一单节行（课间则停在下一节起点），行内按比例
+    var target = null, p = 0;
+    for(var i=0;i<rows.length;i++){
+      var parts = String(rows[i].time||"").split("-");
+      var st = parseHM(parts[0]);
+      var en = parts.length>1 ? parseHM(parts[1]) : null;
+      if(st===null || en===null) continue;
+      if(nowMin <= en){
+        p = (nowMin >= st) ? ((nowMin-st)/((en-st)||1)) : 0;  // 课间则停在节次起点
+        target = i; break;
+      }
+    }
+    if(target===null){ target = rows.length-1; p = 1; }       // 超过最后一节，停在表底
+    if(target > rowEls.length-1) target = rowEls.length-1;
+    var tr = rowEls[target];
+    var trRect = tr.getBoundingClientRect();
+    // 同上：换算回内容坐标（当前 wrap 无固定高度不会纵向滚动，但加上 scrollTop 以防将来加 max-height）
+    var top = (trRect.top - wrapRect.top) + wrap.scrollTop + trRect.height * p;
+
+    line.style.left = left + "px";
+    line.style.width = width + "px";
+    line.style.top  = top + "px";
+    tag.textContent = hm;
+    line.classList.add("on");
+    clampTag();
+  }
+
+  // 时间标签自动跟随：默认贴线右端上方；横向滚动把标签挤出可视区时，clamp 到容器可见范围右缘，保证始终可见
+  function clampTag(){
+    if(!tag) return;
+    var lr = line.getBoundingClientRect();
+    var sc = wrap.scrollLeft;
+    var tw = tag.offsetWidth;
+    var lineContentX = lr.left - wrap.getBoundingClientRect().left + sc; // 线在容器内容坐标系左端
+    var target = lineContentX + lr.width - tw;                          // 内容坐标：标签默认贴线右端
+    var lo = sc + 6;                                                    // 内容坐标：可视区左缘
+    var hi = sc + wrap.clientWidth - tw - 6;                            // 内容坐标：可视区右缘
+    if(target < lo) target = lo;
+    if(target > hi) target = hi;
+    tag.style.left = (target - lineContentX) + "px";
+    tag.style.right = "auto";
+  }
+
+  wrap.addEventListener("scroll", function(){ clampTag(); });
+  window.addEventListener("resize", function(){ clampTag(); });
+  refresh();
+  setInterval(refresh, 30000);   // 每 30 秒跟随真实钟表时间刷新
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) refresh(); });
+})();
+</script>
+</body>
+</html>
