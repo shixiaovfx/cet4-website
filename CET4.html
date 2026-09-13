@@ -37343,17 +37343,10 @@
           dur.title = "";
         } else if (!audio._lsWarnNoSeek) {
           audio._lsWarnNoSeek = true;
-<<<<<<< HEAD
           dur.title = "这个地址不支持分段读取（Range 请求被忽略），进度条和段落跳转都要先把整段音频缓存到本地才能用。\n"
             + "点段落名或拖一下进度条，会自动缓存好再跳过去。\n"
             + (audio._lsRemoteSrc || audio.currentSrc || audio.src || "");
           showHint("音频加载中，让我缓一会…");
-=======
-          dur.title = "这个地址不支持分段读取（Range 请求被忽略），所以进度条拖不动、点段落也不跳。\n"
-            + "点段落名或拖进度条会自动把整段音频缓存到本地，缓存好之后就能自由跳转。\n"
-            + (audio._lsRemoteSrc || audio.currentSrc || audio.src || "");
-          showHint("这段音频的地址不支持分段读取：点段落名或拖进度条时会自动缓存整段音频，缓存好就能自由跳转");
->>>>>>> 99cfbc54e0cfe2950abf2a9241c6dce23bc13354
         }
       });
       audio.addEventListener("timeupdate", paintProgress);
@@ -37376,11 +37369,7 @@
             dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
           });
           if (res === "caching") {
-<<<<<<< HEAD
             showHint("音频读不出来，让我缓一会…");
-=======
-            showHint("音频读不出来：这个地址不支持分段读取，正在整段缓存后重试…");
->>>>>>> 99cfbc54e0cfe2950abf2a9241c6dce23bc13354
             return;
           }
         }
@@ -37403,11 +37392,7 @@
           dur.textContent = "读取长度…";
           return;
         }
-<<<<<<< HEAD
         showHint("正在缓存音频，让我缓一会…");
-=======
-        showHint("这个地址不支持分段读取：正在自动缓存整段音频，缓存好之后进度条就能自由拖动");
->>>>>>> 99cfbc54e0cfe2950abf2a9241c6dce23bc13354
       }
       bar.addEventListener("pointerdown", function (e) {
         if (!hasAudio) return;
@@ -37519,16 +37504,9 @@
         if (res === "jumped") {
           showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "（" + lsClock(mk[i]) + "）");
         } else if (res === "caching") {
-<<<<<<< HEAD
           showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + " · 让我缓一会…");
         } else {
           showHint("音频加载中，让我缓一会…");
-=======
-          showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "：这段音频的地址不支持分段读取，"
-            + "正在自动缓存整段音频，缓存好会从 " + lsClock(mk[i]) + " 开始播…");
-        } else {
-          showHint("正在读取音频…");
->>>>>>> 99cfbc54e0cfe2950abf2a9241c6dce23bc13354
         }
       }
       paintSecs();
