@@ -713,6 +713,102 @@
     box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
   }
   .page-view.hide { display: none !important; }
+  /* ---------- 迷你播放条：切页之后声音还在，得有一个看得见、点得到的控制入口 ----------
+     背景：听力音频是卡片里的 <audio>，切到别的页面只是给 #view-listening 加 .hide
+     （display:none）—— 音频**不会**因此停下。既然声音还在响，就必须给一个入口，
+     否则用户想暂停只能切回去、滚动找到那张卡。
+     显隐规则：只在「不在听力页 && 有声音在播」时出现；回到听力页立刻收起（那里有完整播放器）。
+     排版：左侧一块 = 状态点 + （套题名 / 时间+进度条 两行），点它回听力页并滚到那张卡；
+           右侧 = 播放/暂停、✕（停止并收起）。 */
+  .mini-player {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* 宽度给足：进度条要有地方铺开，标题也不用被挤成省略号 */
+    width: min(92vw, 25rem);
+    padding: 0.5rem 0.55rem 0.5rem 0.85rem;
+    border-radius: 1.1rem;
+    border: 1px solid color-mix(in oklch, var(--line) 70%, white);
+    background: color-mix(in oklch, var(--paper) 90%, white);
+    box-shadow: 0 12px 28px -12px oklch(0.45 0.06 340 / 0.4),
+                0 2px 6px -2px oklch(0.45 0.06 340 / 0.2);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translate(-50%, 0.7rem);
+    transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out);
+    pointer-events: none;                      /* 入场前不挡下面内容 */
+  }
+  .mini-player.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .mini-player[hidden] { display: none; }
+  /* 左边这一整块就是「回听力页」的按钮 */
+  .mp-jump {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; gap: 0.6rem;
+    border: 0; background: transparent; cursor: pointer;
+    font: inherit; text-align: left; padding: 0.08rem 0;
+  }
+  /* 状态点：在播就闪，暂停就灰着不动（一眼看出还在不在响） */
+  .mp-dot {
+    flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%;
+    background: var(--ink-faint);
+    transition: background 0.2s var(--ease-out);
+  }
+  .mini-player.playing .mp-dot { background: var(--accent); animation: mpBlink 1.15s ease-in-out infinite; }
+  @keyframes mpBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.22; } }
+  .mp-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .mp-title {
+    font-size: 0.76rem; font-weight: 700; line-height: 1.15; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: color 0.2s var(--ease-out);
+  }
+  .mp-jump:hover .mp-title { color: var(--accent-deep); }
+  /* 时间 + 进度条：跟卡片里那台播放器同一套排法（两端时间、中间进度） */
+  .mp-line { display: flex; align-items: center; gap: 0.5rem; }
+  .mp-cur, .mp-dur {
+    flex: none; font-size: 0.66rem; line-height: 1; color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .mp-track {
+    flex: 1 1 auto; min-width: 3rem; height: 0.3rem; border-radius: 999px;
+    background: color-mix(in oklch, var(--line) 78%, white);
+    overflow: hidden;
+  }
+  .mp-fill { display: block; height: 100%; width: 0%; border-radius: 999px; background: var(--accent); }
+  .mp-play {
+    flex: none; width: 1.9rem; height: 1.9rem; padding: 0;
+    border: 0; border-radius: 50%; cursor: pointer;
+    background: var(--accent);                    /* 单色，不铺渐变 */
+    display: grid; place-items: center;
+    transition: transform 0.18s var(--ease-out), background 0.18s var(--ease-out);
+  }
+  .mp-play:hover { background: var(--accent-deep); transform: scale(1.06); }
+  .mp-play svg { width: 0.64rem; height: 0.64rem; fill: #fff; display: block; }
+  .mp-play .ico-pause { display: none; }
+  .mini-player.playing .mp-play .ico-pause { display: block; }
+  .mini-player.playing .mp-play .ico-play { display: none; }
+  .mp-close {
+    flex: none; width: 1.5rem; height: 1.5rem; padding: 0;
+    border: 0; border-radius: 50%; cursor: pointer;
+    display: grid; place-items: center;
+    background: transparent; color: var(--ink-faint);
+    transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+  }
+  .mp-close:hover { color: var(--accent-deep); background: color-mix(in oklch, var(--accent) 12%, white); }
+  .mp-close svg { width: 0.6rem; height: 0.6rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  @media (max-width: 480px) {
+    .mini-player { width: calc(100vw - 1.6rem); padding-left: 0.7rem; gap: 0.4rem; }
+    .mp-title { font-size: 0.73rem; }
+    .mp-body { gap: 0.26rem; }
+  }
+  /* 用户只要"减少动态效果"：进出直接切，圆点也不闪 */
+  @media (prefers-reduced-motion: reduce) {
+    .mini-player { transition: none; }
+    .mini-player.playing .mp-dot { animation: none; }
+  }
   /* 监测内 Tab：本周 / 本月 —— 同「页面级 Tab」的滑块做法（见上）。
      这里比顶部多一个坑：这块面板初始是 display:none 的，而 switchMon() 在页面还藏着时
      就会先跑一次（初始化时按 localStorage 恢复"上次看的是周/月"）。隐藏元素量出来是 0×0，
@@ -2896,9 +2992,10 @@
     if (view === "monitor") { renderWeek(); renderMonth(); repaintMonPill(); }
     if (view === "listening") { buildListen(); }                       // 首次进入再搭播放器
     if (view === "paper") { buildPapers(); ppApplyFilter(); ppPaintStat(); refitOpenCards(); }  // 首次进入再搭解析；已展开的按当前宽度重算
-    if (view !== "listening" && listenPlaying) {                        // 切走就停声
-      try { listenPlaying.pause(); } catch (e) {}
-    }
+    /* 切走**不再停声**：听力音频是卡片里的 <audio>，切页只是给 #view-listening 加 .hide
+       （display:none），音频本身照样在放。既然声音还在，就挂出迷你播放条当控制入口
+       （见 mpShow：不在听力页 && 真在播 才出现；回到听力页自动收起）。 */
+    if (view === "listening") { mpHide(); } else { mpShow(); }
   }
   for (var i = 0; i < tabs.length; i++) {
     (function (tab) {
@@ -36333,6 +36430,145 @@
   var listenBuilt = false;
   var listenCards = [];
   var listenPlaying = null;   // 当前在播的 <audio>，保证一次只响一个
+
+  /* ================= 迷你播放条 =================
+     它是 listenPlaying 的一个"镜像视图"，不参与"一次只响一个"的判定 ——
+     那个机制仍然只在卡片里（播放键 / 点段落）负责。
+     三件事：show/hide（跟随页签）、paint（标题 + 时间 + 进度）、三个按钮。
+     ⚠️ 状态同步必须把监听挂在 **audio 自己身上**（见 mpWire），不能挂 document ——
+        听力卡的 <audio> 是 createElement 出来、**没 appendChild 进 DOM** 的游离节点，
+        没有祖先链，事件传不到 document（实测挂 document 会一个都收不到）。 */
+  var miniEl = document.createElement("div");
+  miniEl.className = "mini-player";
+  miniEl.id = "mini-player";
+  miniEl.hidden = true;
+  miniEl.innerHTML =
+    '<button type="button" class="mp-jump" aria-label="回到听力页">' +
+      '<span class="mp-dot" aria-hidden="true"></span>' +
+      '<span class="mp-body">' +
+        '<span class="mp-title">听力精听</span>' +
+        '<span class="mp-line">' +
+          '<span class="mp-cur">0:00</span>' +
+          '<span class="mp-track"><span class="mp-fill"></span></span>' +
+          '<span class="mp-dur">--:--</span>' +
+        '</span>' +
+      '</span>' +
+    '</button>' +
+    '<button type="button" class="mp-play" aria-label="播放 / 暂停">' +
+      '<svg viewBox="0 0 16 16" aria-hidden="true">' +
+        '<path class="ico-play" d="M3.4 1.9v12.2L13.4 8z"/>' +
+        '<path class="ico-pause" d="M3.1 1.7h3.5v12.6H3.1zM9.4 1.7h3.5v12.6H9.4z"/></svg></button>' +
+    '<button type="button" class="mp-close" aria-label="停止播放并收起">' +
+      '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.6 2.6 9.4 9.4M9.4 2.6 2.6 9.4"/></svg></button>';
+  if (document.body) document.body.appendChild(miniEl);
+  var mpTitleEl = miniEl.querySelector(".mp-title");
+  var mpCurEl = miniEl.querySelector(".mp-cur");
+  var mpDurEl = miniEl.querySelector(".mp-dur");
+  var mpFillEl = miniEl.querySelector(".mp-fill");
+  var mpHideTimer = null;
+
+  /* 标题：「2026.06 第 1 套 · 新闻二」—— 段落名按当前播放位置算，跟卡片上的口径一致 */
+  function mpLabel(audio) {
+    var base = audio._lsLabel || "听力精听";
+    var mk = audio._lsMarksFn ? audio._lsMarksFn() : null;
+    var names = (typeof LS_SECS !== "undefined") ? LS_SECS : null;
+    if (!mk || !names) return base;
+    var cur = audio.currentTime || 0, idx = -1;
+    for (var i = 0; i < mk.length; i++) {
+      if (mk[i] != null && cur >= mk[i] - 0.35) idx = i;
+    }
+    /* 「新闻一 1–2」→「新闻一」：迷你条窄，留题型名就够 */
+    return idx < 0 ? base : base + " · " + String(names[idx]).split(" ")[0];
+  }
+  function mpPaint() {
+    var a = listenPlaying;
+    if (!a || !miniEl) return;
+    var d = lsDurOf(a);
+    mpTitleEl.textContent = mpLabel(a);
+    mpCurEl.textContent = lsClock(a.currentTime || 0);
+    mpDurEl.textContent = d > 0 ? lsClock(d) : "--:--";
+    var pct = d > 0 ? Math.max(0, Math.min(100, (a.currentTime || 0) / d * 100)) : 0;
+    mpFillEl.style.width = pct.toFixed(2) + "%";
+    miniEl.classList.toggle("playing", !a.paused);
+  }
+  function mpShow() {
+    if (!miniEl) return;
+    var a = listenPlaying;
+    if (!a || a.paused || a.ended) return;          // 没在响就别冒出来
+    if (curPage === "listening") { mpHide(); return; }
+    mpPaint();
+    if (mpHideTimer) { clearTimeout(mpHideTimer); mpHideTimer = null; }
+    if (miniEl.hidden) {
+      miniEl.hidden = false;
+      /* 先 unhide、下一帧再加 .on —— 同一帧里 display 从 none 变过来，transition 不会生效 */
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { miniEl.classList.add("on"); });
+      });
+    } else {
+      miniEl.classList.add("on");
+    }
+  }
+  function mpHide() {
+    if (!miniEl || miniEl.hidden) return;
+    miniEl.classList.remove("on");
+    if (mpHideTimer) clearTimeout(mpHideTimer);
+    mpHideTimer = setTimeout(function () { miniEl.hidden = true; mpHideTimer = null; }, 240);
+  }
+  /* 播放（与卡片里那两处口径一致：一次只响一个） */
+  function mpPlayAudio(a) {
+    if (listenPlaying && listenPlaying !== a) { try { listenPlaying.pause(); } catch (e) {} }
+    listenPlaying = a;
+    var pr = a.play();
+    if (pr && pr.catch) pr.catch(function () {});
+  }
+  miniEl.querySelector(".mp-play").addEventListener("click", function () {
+    var a = listenPlaying;
+    if (!a) return;
+    if (a.paused) mpPlayAudio(a); else a.pause();
+    mpPaint();
+  });
+  miniEl.querySelector(".mp-close").addEventListener("click", function () {
+    var a = listenPlaying;
+    if (a) { try { a.pause(); } catch (e) {} }
+    mpHide();
+  });
+  miniEl.querySelector(".mp-jump").addEventListener("click", function () {
+    var a = listenPlaying;
+    var card = a && a._lsCard;
+    switchPage("listening");                        // 回去后 mpHide 会自动收起条子
+    if (!card) return;
+    setTimeout(function () {                        // 等 .hide 摘掉、布局落地再滚
+      try { card.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      catch (e) { try { card.scrollIntoView(); } catch (e2) {} }
+    }, 60);
+  });
+
+  /* 把迷你条挂到某一个 audio 上（每张卡建 audio 时调一次，见 buildListen）。
+     ⚠️ 必须挂在 audio 自己身上：听力卡的 <audio> 是 createElement 出来、
+        没有 appendChild 进 DOM 的游离节点，没有祖先链，事件传不到 document。 */
+  function mpWire(audio) {
+    if (!audio || audio._lsMiniWired) return;
+    audio._lsMiniWired = true;
+    audio.addEventListener("play", function () {
+      listenPlaying = audio;
+      mpShow();                                     // 在听力页时 mpShow 自己会按掉
+      mpPaint();
+    });
+    audio.addEventListener("pause", function () {
+      if (listenPlaying !== audio) return;
+      if (!miniEl || miniEl.hidden) return;
+      mpPaint();                                    // 就地变成 ▶：条子留着，好接着按
+    });
+    audio.addEventListener("timeupdate", function () {
+      if (listenPlaying !== audio) return;
+      if (!miniEl || miniEl.hidden) return;         // 看不见就不画
+      mpPaint();
+    });
+    audio.addEventListener("ended", function () {
+      if (listenPlaying !== audio) return;
+      mpHide();                                     // 播完了没什么可控制的，收起来
+    });
+  }
   var lsVT = !!document.startViewTransition;
   if (lsVT) { try { document.documentElement.classList.add("vt-ok"); } catch (e) {} }
   /* 展开 / 收起原文时：能上 View Transitions 就让它把「这张卡变宽 + 其他卡下移」整体补间；
@@ -37042,6 +37278,12 @@
       audio.preload = "none";
       /* 记住远程地址：换成本地缓存副本后，仍要用它去抓整段音频 / 退回远程源 */
       audio._lsRemoteSrc = srcMain || "";
+      /* 迷你播放条要的三样东西：这套叫什么、卡片在哪（切页后点条子能跳回来）、
+         段落时间表（挂函数不挂数组 —— 用户"重标"之后表会变，现取才准）。 */
+      audio._lsLabel = set.ym + " " + (lsSetCount(set.ym) > 1 ? "第 " + set.set + " 套" : "全场 1 套");
+      audio._lsCard = li;
+      audio._lsMarksFn = marksOf;
+      mpWire(audio);                              // 迷你条的状态同步（挂 audio 自己身上）
       if (hasAudio) audio.src = srcMain;
 
       var play = document.createElement("button");
