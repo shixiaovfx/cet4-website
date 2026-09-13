@@ -185,7 +185,7 @@
   .today-band::before {
     content: "";
     position: absolute; inset: 0 0 auto 0; height: 5px;
-    background: linear-gradient(90deg, var(--accent), var(--sage));
+    background: var(--accent);
     opacity: 0.85;
   }
   .today-top {
@@ -653,8 +653,16 @@
   .book-link .book-link-t { font-weight: 700; font-size: 1.05rem; color: var(--accent-deep); }
   .book-link .book-link-s { font-size: 0.8rem; color: var(--ink-soft); }
 
-  /* ---------- 页面级 Tab：打卡计划 / 打卡监测 ---------- */
+  /* ---------- 页面级 Tab：打卡计划 / 听力精听 / 真题解析 / 打卡监测 ----------
+     2026-09-13：切页"卡、不顺滑"的两个来源，各自对症下药：
+     ① 滑块：以前是"每个按钮自己跳一次高亮"，而高亮是 linear-gradient ——
+        浏览器没法把 transparent 补间成渐变（background-image 不可插值），只能瞬间切换，
+        看着就是"顿一下"。现在改成**同一个胶囊滑块在四个按钮之间平移**：位移用 transform
+        （走合成层，不重排），宽度单独补间。
+     ② 首次点开要现搭（真题页 47k 节点 136ms / 听力页 22k 节点 48ms）——
+        改成首屏空闲后提前搭好，切页只剩显隐（实测 3~10ms）。见 warmUpHeavyViews。 */
   .page-tabs {
+    position: relative;                     /* 滑块的定位基准 */
     display: inline-flex;
     gap: 0.4rem;
     background: color-mix(in oklch, var(--ink) 6%, white);
@@ -663,7 +671,25 @@
     padding: 0.28rem;
     margin: 1.3rem 0 0.6rem;
   }
+  .page-tab-pill {
+    position: absolute;
+    top: 0.28rem;
+    bottom: 0.28rem;
+    left: 0;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
+    transform: translateX(0);
+    transition: transform 0.28s var(--ease-out), width 0.28s var(--ease-out);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;                             /* 首帧量好位置之前先不画，免得"从最左边滑进来" */
+  }
+  .page-tabs.pill-ready .page-tab-pill { opacity: 1; }
   .page-tab {
+    position: relative;
+    z-index: 1;
     border: 0;
     cursor: pointer;
     font: inherit;
@@ -672,17 +698,27 @@
     background: transparent;
     padding: 0.45rem 1.4rem;
     border-radius: 999px;
-    transition: all 0.25s var(--ease-out);
+    /* 只补颜色：渐变高亮已经交给滑块了。以前的 `all` 会把每个可动画属性都盯着，
+       而且 background-image 那一条根本补不出来，纯属白盯。 */
+    transition: color 0.22s var(--ease-out);
   }
   .page-tab:hover { color: var(--accent-deep); }
-  .page-tab.on {
+  .page-tab.on { color: #fff; font-weight: 700; }
+  /* 兜底：滑块还没量好位置时（JS 没跑起来 / 老浏览器），当前页签自己带底线高亮，
+     免得出现"白字压在白底上"。滑块一就位，这条自动让位。 */
+  .page-tabs:not(.pill-ready) .page-tab.on {
     background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-    color: #fff;
-    font-weight: 700;
     box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
   }
   .page-view.hide { display: none !important; }
+  /* 监测内 Tab：本周 / 本月 —— 同「页面级 Tab」的滑块做法（见上）。
+     这里比顶部多一个坑：这块面板初始是 display:none 的，而 switchMon() 在页面还藏着时
+     就会先跑一次（初始化时按 localStorage 恢复"上次看的是周/月"）。隐藏元素量出来是 0×0，
+     照顶部写法会把 pill-ready 加上、把兜底高亮关掉 —— 等用户真打开监测页就看到"白字压白底"。
+     所以 moveMonPill 量到 0 宽就直接放弃（不加 pill-ready，让兜底接管），
+     并在 switchPage 进入监测页时补测一次。 */
   .mon-toggle {
+    position: relative;                     /* 滑块的定位基准 */
     display: inline-flex;
     gap: 0.4rem;
     background: var(--paper-2);
@@ -691,7 +727,25 @@
     padding: 0.25rem;
     margin-bottom: 1.4rem;
   }
+  .mon-tab-pill {
+    position: absolute;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    left: 0;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
+    transform: translateX(0);
+    transition: transform 0.28s var(--ease-out), width 0.28s var(--ease-out);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+  }
+  .mon-toggle.pill-ready .mon-tab-pill { opacity: 1; }
   .mon-tab {
+    position: relative;
+    z-index: 1;
     border: 0;
     cursor: pointer;
     font: inherit;
@@ -700,12 +754,14 @@
     background: transparent;
     padding: 0.4rem 1.2rem;
     border-radius: 999px;
-    transition: all 0.25s var(--ease-out);
+    /* 只补颜色：渐变高亮交给滑块（background-image 不可插值，以前 transition:all 白盯） */
+    transition: color 0.22s var(--ease-out);
   }
   .mon-tab:hover { color: var(--accent-deep); }
-  .mon-tab.on {
+  .mon-tab.on { color: #fff; font-weight: 700; }
+  /* 兜底：滑块没就位时（JS 未跑 / 面板还藏着）当前页签自带高亮 */
+  .mon-toggle:not(.pill-ready) .mon-tab.on {
     background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-    color: #fff;
     box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
   }
   .mon-view.hide { display: none; }
@@ -1753,6 +1809,244 @@
     .wk-head { gap: 0.5rem; }
     .wk-title b { font-size: 0.94rem; }
   }
+
+  /* ---------- 番茄时钟（打卡计划 · 顶部） ---------- */
+  .focus-card {
+    background: linear-gradient(160deg, rgba(255,255,255,0.86), rgba(255,255,255,0.64));
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    box-shadow: var(--shadow-soft);
+    display: grid;
+    gap: 1.1rem;
+  }
+  .focus-modes { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .focus-mode {
+    font: inherit; font-size: 0.84rem; cursor: pointer;
+    padding: 0.42rem 0.95rem; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.78);
+    color: var(--ink-soft);
+    transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+  }
+  .focus-mode:hover { color: var(--accent-deep); border-color: var(--accent); }
+  .focus-mode.on {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    color: #fff; font-weight: 700;
+    box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
+  }
+  .focus-mode-custom { border-style: dashed; border-color: var(--accent); color: var(--accent-deep); font-weight: 600; }
+  .focus-mode-custom.on { border-style: solid; }
+
+  .focus-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 320px); gap: 1.1rem; align-items: start; }
+  .focus-left { display: grid; gap: 1.1rem; justify-items: stretch; align-content: center; align-self: stretch; width: 100%; }
+  .focus-ring {
+    position: relative; display: grid; place-items: center;
+    border-radius: 26px; width: 100%;
+    background: radial-gradient(circle at 50% 50%, oklch(0.74 0.13 350 / 0.10), transparent 70%);
+  }
+  .focus-ring svg { width: min(300px, 62vw); height: auto; display: block; }
+  .fr-track { fill: none; stroke: oklch(0.93 0.018 20); stroke-width: 20; }
+  .fr-bar { fill: none; stroke: url(#focusGrad); stroke-width: 20; stroke-linecap: round; }
+  .focus-grad-a { stop-color: var(--accent); }
+  .focus-grad-b { stop-color: var(--accent-deep); }
+  .focus-read {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(178px, 38vw);
+    display: grid; justify-items: center;
+    text-align: center; gap: 0.36rem; pointer-events: none;
+  }
+  .focus-read b {
+    font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-size: clamp(2rem, 5.6vw, 2.8rem); line-height: 1.08;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .focus-read .fs-state { font-size: 0.78rem; line-height: 1.5; color: var(--ink-faint); }
+  .focus-read .fs-sub { font-size: 0.76rem; line-height: 1.4; color: var(--sage-deep); font-weight: 600; }
+
+  .focus-side { display: grid; gap: 0.7rem; }
+  .focus-panel {
+    background: #fff; border: 1px solid var(--line);
+    border-radius: 16px; padding: 0.85rem 0.95rem;
+  }
+  .focus-panel h4 { font-size: 0.88rem; font-weight: 700; color: var(--ink); margin-bottom: 0.6rem; }
+  .focus-inputs { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .focus-step {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 0.2rem 0.35rem;
+  }
+  .focus-step button {
+    font: inherit; font-size: 0.95rem; line-height: 1;
+    width: 1.5rem; height: 1.5rem; border-radius: 8px; cursor: pointer;
+    border: 0; background: transparent; color: var(--ink-faint);
+  }
+  .focus-step button:hover { color: var(--accent-deep); background: rgba(255,255,255,0.9); }
+  .focus-step b {
+    min-width: 1.9rem; text-align: center;
+    font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-size: 1.05rem; color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .focus-unit { font-size: 0.78rem; color: var(--ink-soft); }
+  .focus-presets { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.6rem; }
+  .focus-presets button {
+    font: inherit; font-size: 0.74rem; cursor: pointer;
+    padding: 0.28rem 0.6rem; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--paper-2); color: var(--ink-soft);
+    transition: color 0.16s var(--ease-out), border-color 0.16s var(--ease-out);
+  }
+  .focus-presets button:hover { color: var(--accent-deep); border-color: var(--accent); }
+  .focus-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+  .focus-stats > div { text-align: center; background: var(--paper-2); border-radius: 12px; padding: 0.5rem 0.15rem; }
+  .focus-stats b {
+    display: block; font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-size: 1.22rem; line-height: 1.25; color: var(--accent-deep); font-variant-numeric: tabular-nums;
+  }
+  .focus-stats > div:nth-child(2) b { color: var(--sage-deep); }
+  .focus-stats > div:nth-child(3) b { color: var(--lilac-deep); }
+  .focus-stats span { font-size: 0.66rem; color: var(--ink-faint); }
+
+  .focus-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.28rem; }
+  .fb-cell { display: grid; justify-items: center; gap: 0.22rem; }
+  .fb-wrap { width: 100%; height: 62px; display: flex; align-items: flex-end; }
+  .fb {
+    width: 100%; min-height: 3px; border-radius: 5px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+    transition: height 0.3s var(--ease-out);
+  }
+  .fb.zero { background: oklch(0.9 0.012 20); }
+  .fb-cell.today .fb { box-shadow: 0 0 0 2px oklch(0.74 0.13 350 / 0.3); }
+  .fb-cell .fd { font-size: 0.64rem; color: var(--ink-faint); }
+  .fb-cell .fv { font-size: 0.64rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .fb-cell.today .fd { color: var(--accent-deep); font-weight: 700; }
+  .focus-week-sum { margin-top: 0.55rem; font-size: 0.74rem; color: var(--ink-faint); }
+
+  .focus-actions { display: flex; gap: 0.55rem; justify-content: center; flex-wrap: wrap; }
+  .focus-btn {
+    font: inherit; font-size: 0.95rem; cursor: pointer;
+    padding: 0.6rem 1.9rem; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink-soft);
+    transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  }
+  .focus-btn:hover { color: var(--accent-deep); border-color: var(--accent); }
+  .focus-btn:active { transform: translateY(1px); }
+  .focus-btn-main {
+    border: 0; color: #fff; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 2px 10px oklch(0.6 0.15 350 / 0.35);
+  }
+  .focus-btn-main:hover { color: #fff; }
+  .focus-note { font-size: 0.76rem; color: var(--ink-faint); text-align: center; }
+  .focus-ring.running .focus-read b { color: var(--accent-deep); }
+  .focus-ring.done .focus-read b { color: var(--sage-deep); }
+
+  /* ---------- 请假卡（方案 C · 墨色印记） ---------- */
+  .mon-cell { position: relative; }
+  .mon-cell .leave-btn {
+    position: absolute; right: 0.2rem; top: 0.2rem;
+    width: 1.15rem; height: 1.15rem; padding: 0;
+    display: grid; place-items: center; cursor: pointer;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.92); color: var(--ink-faint);
+    font-size: 0.62rem; line-height: 1; font-family: inherit;
+    opacity: 0; transition: opacity 0.18s var(--ease-out), color 0.18s, border-color 0.18s;
+  }
+  .mon-cell:hover .leave-btn,
+  .mon-cell .leave-btn:focus-visible { opacity: 1; }
+  .mon-cell .leave-btn:hover { color: var(--accent-deep); border-color: var(--accent); }
+  .mon-cell.leave {
+    background: linear-gradient(150deg, oklch(0.44 0.03 30), oklch(0.29 0.03 25));
+    border: 1px solid var(--accent);
+  }
+  .mon-cell.leave .d, .mon-cell.leave .n { color: #fff; }
+  .mon-cell.leave .n { color: #fff; }
+  .mon-cell.leave .c { color: #F5C9D6; font-weight: 600; }
+  .mon-cell.leave .leave-btn {
+    opacity: 0.85;
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(231,156,176,0.6); color: #F5C9D6;
+  }
+  .mon-cell .stamp {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.45rem; height: 1.45rem; margin: 0.08rem 0 0.02rem;
+    border-radius: 999px; background: var(--accent);
+    color: oklch(0.33 0.035 25); font-size: 0.68rem; font-weight: 800;
+  }
+  .mon-note span.mn-leave::before { background: oklch(0.33 0.035 25); }
+  .mon-cell .c .s3 { display: block; color: #F5C9D6; font-weight: 600; margin-top: 0.08rem; }
+
+  .leave-mask {
+    position: fixed; inset: 0; z-index: 200;
+    display: grid; place-items: center; padding: 1rem;
+    background: oklch(0.33 0.035 25 / 0.36);
+    backdrop-filter: blur(3px);
+  }
+  .leave-mask.hide { display: none; }
+  .leave-card {
+    width: min(520px, 100%); max-height: 90vh; overflow: auto;
+    display: grid; gap: 0.85rem;
+    padding: 1.5rem;
+    border-radius: 22px; border: 1px solid var(--accent);
+    background: linear-gradient(150deg, oklch(0.44 0.03 30), oklch(0.27 0.03 25));
+    color: #fff;
+    box-shadow: 0 20px 52px oklch(0.2 0.02 25 / 0.42);
+  }
+  .leave-head { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+  .leave-head h3 {
+    font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-size: 1.22rem; font-weight: 700; color: #fff;
+  }
+  .leave-badge {
+    flex: 0 0 auto; font-size: 0.7rem; font-weight: 800;
+    padding: 0.3rem 0.72rem; border-radius: 999px;
+    background: var(--accent); color: oklch(0.33 0.035 25);
+  }
+  .leave-date { font-size: 0.85rem; color: #F5C9D6; }
+  .leave-why { font-size: 0.72rem; color: oklch(0.76 0.028 30); letter-spacing: 0.06em; }
+  .leave-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .leave-chip {
+    font: inherit; font-size: 0.84rem; cursor: pointer;
+    padding: 0.48rem 1rem; border-radius: 999px;
+    background: rgba(255,255,255,0.12); border: 1px solid transparent; color: oklch(0.93 0.012 25);
+    transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
+  }
+  .leave-chip:hover { background: rgba(255,255,255,0.22); }
+  .leave-chip.on { background: var(--accent); color: oklch(0.33 0.035 25); font-weight: 700; }
+  .leave-note {
+    width: 100%; font: inherit; font-size: 0.84rem;
+    padding: 0.62rem 0.8rem; border-radius: 12px;
+    background: rgba(255,255,255,0.12); border: 1px solid transparent; color: #fff;
+  }
+  .leave-note::placeholder { color: oklch(0.72 0.022 25); }
+  .leave-note:focus { outline: none; border-color: var(--accent); }
+  .leave-tip {
+    font-size: 0.76rem; line-height: 1.65;
+    padding: 0.7rem 0.85rem; border-radius: 14px;
+    background: rgba(255,255,255,0.09); color: #F5C9D6;
+  }
+  .leave-acts { display: flex; align-items: center; gap: 0.55rem; }
+  .leave-btn-ok {
+    font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+    margin-left: auto; padding: 0.6rem 1.5rem; border-radius: 999px; border: 0;
+    background: var(--accent); color: oklch(0.33 0.035 25);
+  }
+  .leave-btn-no {
+    font: inherit; font-size: 0.88rem; cursor: pointer;
+    padding: 0.6rem 1.4rem; border-radius: 999px; border: 0;
+    background: rgba(255,255,255,0.12); color: #fff;
+  }
+  .leave-btn-del {
+    font: inherit; font-size: 0.82rem; cursor: pointer;
+    padding: 0.58rem 1.1rem; border-radius: 999px;
+    background: transparent; border: 1px solid rgba(255,255,255,0.3); color: oklch(0.86 0.05 350);
+  }
+  .leave-btn-del.hide { display: none; }
+
+  @media (max-width: 760px) {
+    .focus-main { grid-template-columns: minmax(0, 1fr); }
+    .focus-actions .focus-btn { flex: 1 1 auto; }
+  }
 </style>
 </head>
 <body data-page-node-id="cBf8o2ApVOvNLJs4xYiKwX">
@@ -1854,8 +2148,9 @@
       </div>
     </div>
   </div>
-  <!-- ===== 页面级 Tab：打卡计划 / 听力精听 / 打卡监测 ===== -->
+  <!-- ===== 页面级 Tab：打卡计划 / 听力精听 / 真题解析 / 打卡监测 ===== -->
   <nav class="page-tabs" id="page-tabs" data-page-node-id="a9s9AoERIVZBDrppNH4nPi">
+    <span class="page-tab-pill" id="page-tab-pill" aria-hidden="true"></span>
     <button class="page-tab on" data-view="plan" data-page-node-id="cvdnghSV5529ClU7HtsP9z">打卡计划</button>
     <button class="page-tab" data-view="listening" data-page-node-id="Ls7mQ2xVb9tRc4dNgW1pUe">听力精听</button>
     <button class="page-tab" data-view="paper" data-page-node-id="Pp1aQ2xVb9tRc4dNgW1pUe">真题解析</button>
@@ -1867,7 +2162,7 @@
   <!-- ===== 每日打卡 ===== -->
   <section id="today" data-page-node-id="D79mjFszYNfki9vC8g8syr">
     <div class="sec-head" data-page-node-id="GA53vrBU6zedSotJEQ7uhV">
-      <span class="sec-no" data-page-node-id="PlE36B08akzmKxqGY9vnCH">01 · TODAY</span>
+      <span class="sec-no" data-page-node-id="PlE36B08akzmKxqGY9vnCH">TODAY</span>
       <h2 class="sec-title" data-page-node-id="pdhYUhMpFJWwRJ5LBHTn5m">今天的待办
         <small data-page-node-id="krHzAfrnw6OW2PTQBsbjUr">勾掉一项，就往前一点点 · 数据存在本机，换了日子自动重置</small>
       </h2>
@@ -1899,7 +2194,7 @@
   <!-- ===== 三阶段时间轴 ===== -->
   <section id="stages" data-page-node-id="SpsUok6QZHSqW6a4areTFN">
     <div class="sec-head" data-page-node-id="NxgpBb6ZrHN10gmINLGAX9">
-      <span class="sec-no" data-page-node-id="GAOsNiiYAMmgUGxp3AabXb">02 · STAGES</span>
+      <span class="sec-no" data-page-node-id="GAOsNiiYAMmgUGxp3AabXb">STAGES</span>
       <h2 class="sec-title" data-page-node-id="wEDC0tw6hFuC3vVxG34uoU">三阶段路线
         <small data-page-node-id="VZTjNO4h95a1ULwr7lb05U">先打底，再提速，最后稳状态</small>
       </h2>
@@ -1948,7 +2243,7 @@
   <!-- ===== 14 周进度表 ===== -->
   <section id="weeks" data-page-node-id="sKDMUT2SYMprfyxytausFN">
     <div class="sec-head" data-page-node-id="yRsNKFNG08nou5DBrSrj6v">
-      <span class="sec-no" data-page-node-id="g1wTYZIGOrkRfDHQb1X1sy">03 · WEEKS</span>
+      <span class="sec-no" data-page-node-id="g1wTYZIGOrkRfDHQb1X1sy">WEEKS</span>
       <h2 class="sec-title" data-page-node-id="pl5mwsusaNQDPiY3G2WNyX">14 周进度表
         <small data-page-node-id="czv1wYi5i9QGXBw4DcMzc1">高亮的那一行，就是现在 · 网报 9/14 13:00 – 9/21 16:00，记得先报名</small>
       </h2>
@@ -1959,7 +2254,7 @@
   <!-- ===== 04 数据备份：导出/导入打卡记录（仅“打卡计划”页显示） ===== -->
   <section id="backup" data-page-node-id="aUTvPraOStX9uDtgKHdW8n">
     <div class="sec-head" data-page-node-id="Gfkx1X1FgLimqF0dF9eB8E">
-      <span class="sec-no" data-page-node-id="4SeeLvWFOCED5WRqG3SEU3">04 · BACKUP</span>
+      <span class="sec-no" data-page-node-id="4SeeLvWFOCED5WRqG3SEU3">BACKUP</span>
       <h2 class="sec-title" data-page-node-id="LHWPZJw8QeHKgzB9zxn2AY">数据备份
         <small data-page-node-id="DEJJ5TgXHcLmF3qSRKSCOV">导出带走 / 导入找回 · 打卡和日历一块儿同步</small>
       </h2>
@@ -1984,7 +2279,7 @@
 
     <section id="listening" data-page-node-id="LsVw1kQxTn3bYp8mRc2dFh">
       <div class="sec-head" data-page-node-id="LsVw2kQxTn3bYp8mRc2dFh">
-        <span class="sec-no" data-page-node-id="LsVw3kQxTn3bYp8mRc2dFh">05 · LISTENING</span>
+        <span class="sec-no" data-page-node-id="LsVw3kQxTn3bYp8mRc2dFh">LISTENING</span>
         <h2 class="sec-title" data-page-node-id="LsVw4kQxTn3bYp8mRc2dFh">听力精听
           <small data-page-node-id="LsVw5kQxTn3bYp8mRc2dFh">真题听力按套放这儿 · 每天挑一段，听完对文本跟读一遍</small>
         </h2>
@@ -2013,7 +2308,7 @@
 
     <section id="paper" data-page-node-id="Pp1aQ2xVb9tRc4dNgW1pUf">
       <div class="sec-head" data-page-node-id="Pp2aQ2xVb9tRc4dNgW1pUf">
-        <span class="sec-no" data-page-node-id="Pp3aQ2xVb9tRc4dNgW1pUf">06 · PAPER</span>
+        <span class="sec-no" data-page-node-id="Pp3aQ2xVb9tRc4dNgW1pUf">PAPER</span>
         <h2 class="sec-title" data-page-node-id="Pp4aQ2xVb9tRc4dNgW1pUf">真题解析
           <small data-page-node-id="Pp5aQ2xVb9tRc4dNgW1pUf">整套卷子的答案 / 翻译 / 解析 · 点开某一套，用上面的题目索引直接跳到想看的那一题</small>
         </h2>
@@ -2038,14 +2333,103 @@
   <!-- ===== 07 打卡监测：同页标签切换，点一下就只剩周/月统计 ===== -->
   <div class="page-view hide" id="view-monitor" data-page-node-id="MFJ6kZrHaZPGzkKXnsBXjX">
 
+    <!-- ===== 番茄时钟 ===== -->
+    <section id="focus">
+      <div class="sec-head">
+        <span class="sec-no">FOCUS</span>
+        <h2 class="sec-title">番茄时钟
+          <small>专注一段，休息一段 &middot; 时长随便设，记录存在本机</small>
+        </h2>
+      </div>
+      <div class="focus-card">
+        <div class="focus-modes" id="focus-modes">
+          <button type="button" class="focus-mode on" data-kind="work" data-min="25">番茄 25 分钟</button>
+          <button type="button" class="focus-mode" data-kind="short" data-min="5">短休 5 分钟</button>
+          <button type="button" class="focus-mode" data-kind="long" data-min="15">长休 15 分钟</button>
+          <button type="button" class="focus-mode focus-mode-custom" data-kind="custom">自定义时长</button>
+        </div>
+
+        <div class="focus-main">
+          <div class="focus-left">
+            <div class="focus-ring" id="focus-ring">
+              <svg viewBox="0 0 300 300" aria-hidden="true">
+                <defs>
+                  <linearGradient id="focusGrad" x1="60" y1="60" x2="240" y2="240" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" class="focus-grad-a"></stop>
+                    <stop offset="1" class="focus-grad-b"></stop>
+                  </linearGradient>
+                </defs>
+                <circle class="fr-track" cx="150" cy="150" r="122"></circle>
+                <circle class="fr-bar" id="focus-arc" cx="150" cy="150" r="122" transform="rotate(-90 150 150)"></circle>
+              </svg>
+              <div class="focus-read">
+                <b id="focus-time">25:00</b>
+                <span class="fs-state" id="focus-state">开始专注<br>攒下第 1 个番茄</span>
+                <span class="fs-sub" id="focus-sub">今日已专注 0 分钟</span>
+              </div>
+            </div>
+
+            <div class="focus-actions">
+              <button type="button" class="focus-btn focus-btn-main" id="focus-toggle">开始专注</button>
+              <button type="button" class="focus-btn" id="focus-reset">重置</button>
+            </div>
+            <div class="focus-note">完成 1 个番茄 = 记 1 次专注；计时不占页面，切到别的页也会继续走。</div>
+          </div>
+
+          <div class="focus-side">
+            <div class="focus-panel">
+              <h4>自定义倒计时</h4>
+              <div class="focus-inputs">
+                <div class="focus-step">
+                  <button type="button" data-step="m" data-d="-1" aria-label="减一分">&#8722;</button>
+                  <b id="focus-min">45</b>
+                  <button type="button" data-step="m" data-d="1" aria-label="加一分">+</button>
+                </div>
+                <span class="focus-unit">分</span>
+                <div class="focus-step">
+                  <button type="button" data-step="s" data-d="-1" aria-label="减五秒">&#8722;</button>
+                  <b id="focus-sec">00</b>
+                  <button type="button" data-step="s" data-d="1" aria-label="加五秒">+</button>
+                </div>
+                <span class="focus-unit">秒</span>
+              </div>
+              <div class="focus-presets" id="focus-presets">
+                <button type="button" data-min="5">5 分</button>
+                <button type="button" data-min="15">15 分</button>
+                <button type="button" data-min="25">25 分</button>
+                <button type="button" data-min="45">45 分</button>
+                <button type="button" data-min="60">60 分</button>
+                <button type="button" data-min="90">90 分</button>
+              </div>
+            </div>
+
+            <div class="focus-panel">
+              <h4>今日成果</h4>
+              <div class="focus-stats">
+                <div><b id="focus-cnt">0</b><span>番茄 &middot; 个</span></div>
+                <div><b id="focus-min-today">0</b><span>专注 &middot; 分钟</span></div>
+                <div><b id="focus-days">0</b><span>连续 &middot; 天</span></div>
+              </div>
+            </div>
+
+            <div class="focus-panel">
+              <h4>本周专注记录</h4>
+              <div class="focus-bars" id="focus-bars"></div>
+              <div class="focus-week-sum" id="focus-week-sum">本周还没开始专注</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <section id="monitor" data-page-node-id="FFpC2N8wWtwpNQyKPiY0iI">
       <div class="sec-head" data-page-node-id="uPoSnBXCuE4YYyfQkvSrd4">
-        <span class="sec-no" data-page-node-id="Uwmsavbyv4ffkrFC4GHzja">07 · MONITOR</span>
+        <span class="sec-no" data-page-node-id="Uwmsavbyv4ffkrFC4GHzja">MONITOR</span>
         <h2 class="sec-title" data-page-node-id="jIGpBCPGxglLfz7uZBSojK">打卡监测
           <small data-page-node-id="sMSp4l7e013DN1FGRZJWfS">一周一小结，一月一回顾 · 历史与未来月份都能翻</small>
         </h2>
       </div>
       <div class="mon-toggle" id="mon-toggle" data-page-node-id="8MCxx9N7rPu4FlWcZfbbuk">
+        <span class="mon-tab-pill" id="mon-tab-pill" aria-hidden="true"></span>
         <button class="mon-tab on" data-view="week" data-page-node-id="l4xRtyLAAmz2ADwj1aVo64">本周</button>
         <button class="mon-tab" data-view="month" data-page-node-id="ZR5MPmJpAfPxUegWhnHilG">本月</button>
       </div>
@@ -2227,10 +2611,13 @@
     var cur = startOfDay(now);
     var todayK = cur.getFullYear() + "-" + (cur.getMonth() + 1) + "-" + cur.getDate();
     // 连续天数只看真实打卡记录：今天没勾就从昨天往回数，取消勾选后连续自动扣减
-    if (!hist[todayK]) cur.setDate(cur.getDate() - 1);
-    while (true) {
+    // 请假当天不算断链（跳过继续往前数），但也不计入连续天数
+    if (!hist[todayK] && !lvOn(cur.getTime())) cur.setDate(cur.getDate() - 1);
+    var sGuard = 0;
+    while (sGuard++ < 400) {
       var k = cur.getFullYear() + "-" + (cur.getMonth() + 1) + "-" + cur.getDate();
-      if (hist[k]) { streak++; } else { break; }
+      if (hist[k]) { streak++; }
+      else if (!lvOn(cur.getTime())) { break; }
       cur.setDate(cur.getDate() - 1);
     }
     document.getElementById("stat-total").textContent = days;
@@ -2350,6 +2737,15 @@
   var MOM_SCALES = { "yunduo.gif": 1.29, "dangqiuqian.gif": 1.22, "feiqilai.gif": 1.23, "xinxing.gif": 1.29 };
   var momKey = "kelian.gif";
   function momScale() { return MOM_SCALES[momKey] || 1; }
+  /* 请假数据的存储键。必须提前定义在这里：updateMom() 在脚本加载时就会跑，
+     而请假模块（lvAll / lvOn）在文件末尾——var 只提升声明、不提升赋值，
+     放在末尾会让 Kitty 判定时读到 undefined（曾因此漏判请假、误判成偷懒）。 */
+  var LV_KEY = "cet4-leave";
+  function yesterdayMs() {
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  }
   function yesterdayKey() {
     var d = new Date();
     d.setDate(d.getDate() - 1);
@@ -2366,7 +2762,8 @@
     if (lv === 0) {
       var hist = {};
       try { hist = JSON.parse(localStorage.getItem("cet4-history") || "{}"); } catch (e) {}
-      sad = !hist[yesterdayKey()];
+      // 只有"昨天真的没打卡"才哭；昨天请了假就不算没打（请假不指责、也不催今天补）
+      sad = !hist[yesterdayKey()] && !lvOn(yesterdayMs());
       momKey = sad ? "biti.gif" : MOM_KEYS[0];
     } else {
       momKey = MOM_KEYS[lv];
@@ -2446,8 +2843,33 @@
   var dayCN = ["日", "一", "二", "三", "四", "五", "六"];
   var ONE_DAY = 86400000;
 
-  /* ---------- 页面 Tab：计划 / 监测 ---------- */
+  /* ---------- 页面 Tab：计划 / 听力 / 解析 / 监测 ---------- */
   var tabs = document.querySelectorAll("#page-tabs .page-tab");
+  var tabNav = document.getElementById("page-tabs");
+  var tabPill = document.getElementById("page-tab-pill");
+  var curPage = null;                 // 记住当前页签；首次进入不播滑块补间
+  /* 把滑块胶囊挪到当前页签下面。
+     animate=false 用于「首次定位 / 窗口缩放 / 字体到位」——这些时候要瞬间对齐，不要滑过去。 */
+  function moveTabPill(btn, animate) {
+    if (!tabNav || !tabPill || !btn) return;
+    if (!animate) tabPill.style.transition = "none";
+    var nr = tabNav.getBoundingClientRect();
+    var br = btn.getBoundingClientRect();
+    /* 绝对定位的基准是容器的 padding box，rect 却是从边框外沿算起 —— 减掉这 1px 边框 */
+    var bw = tabNav.clientLeft || 0;
+    tabPill.style.width = br.width + "px";
+    tabPill.style.transform = "translateX(" + (br.left - nr.left - bw) + "px)";
+    if (!animate) {
+      void tabPill.offsetWidth;       // 立刻落地，别让浏览器把这次也算成一次补间
+      tabPill.style.transition = "";
+    }
+    tabNav.classList.add("pill-ready");
+  }
+  function repaintTabPill() {
+    for (var k = 0; k < tabs.length; k++) {
+      if (tabs[k].classList.contains("on")) { moveTabPill(tabs[k], false); return; }
+    }
+  }
   function switchPage(view) {
     var plan = document.getElementById("view-plan");
     var mon = document.getElementById("view-monitor");
@@ -2457,11 +2879,19 @@
     mon.classList.toggle("hide", view !== "monitor");
     if (lis) lis.classList.toggle("hide", view !== "listening");
     if (pap) pap.classList.toggle("hide", view !== "paper");
+    var active = null;
     for (var i = 0; i < tabs.length; i++) {
-      tabs[i].classList.toggle("on", tabs[i].getAttribute("data-view") === view);
+      var on = tabs[i].getAttribute("data-view") === view;
+      tabs[i].classList.toggle("on", on);
+      if (on) active = tabs[i];
     }
+    /* 先切 .on 再量：.on 会把字重换成 700，先量可能量到旧宽度 */
+    moveTabPill(active, curPage !== null && curPage !== view);
+    curPage = view;
     try { localStorage.setItem(PAGE_KEY, view); } catch (e) {}
-    if (view === "monitor") { renderWeek(); renderMonth(); }
+    /* 监测页刚由隐藏变可见：初始化时那块面板是 display:none，滑块量不到宽度没落地，
+       这里补测一次（不播动画，直接对齐） */
+    if (view === "monitor") { renderWeek(); renderMonth(); repaintMonPill(); }
     if (view === "listening") { buildListen(); }                       // 首次进入再搭播放器
     if (view === "paper") { buildPapers(); ppApplyFilter(); ppPaintStat(); refitOpenCards(); }  // 首次进入再搭解析；已展开的按当前宽度重算
     if (view !== "listening" && listenPlaying) {                        // 切走就停声
@@ -2472,6 +2902,11 @@
     (function (tab) {
       tab.addEventListener("click", function () { switchPage(tab.getAttribute("data-view")); });
     })(tabs[i]);
+  }
+  /* 窗口尺寸变了 / 中文字体晚一步到位 —— 按钮宽度会变，滑块得重新对齐（不播动画） */
+  window.addEventListener("resize", repaintTabPill);
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(repaintTabPill);
   }
 
   /* ---------- 数据 ---------- */
@@ -2564,7 +2999,9 @@
   function bestStreak(fromMs, toMs, m) {
     var best = 0, cur = 0;
     for (var t = fromMs; t < toMs; t += ONE_DAY) {
-      if (dayVal(m[t]) > 0) { cur++; if (cur > best) best = cur; } else { cur = 0; }
+      // 请假当天不断链：跳过，但也不计入连续天数
+      if (dayVal(m[t]) > 0) { cur++; if (cur > best) best = cur; }
+      else if (!lvOn(t)) { cur = 0; }
     }
     return best;
   }
@@ -2579,10 +3016,11 @@
     return n;
   }
   function streak(todayMs, m) {
-    var t = todayMs, n = 0;
-    if (dayVal(m[t]) <= 0) t -= ONE_DAY; // 今天没打就从昨天开始数，取消勾选后连续自动扣减
-    while (true) {
-      if (dayVal(m[t]) > 0) { n++; } else { break; }
+    var t = todayMs, n = 0, guard = 0;
+    if (dayVal(m[t]) <= 0 && !lvOn(t)) t -= ONE_DAY; // 今天没打就从昨天开始数；请假当天不算断链
+    while (guard++ < 400) {
+      if (dayVal(m[t]) > 0) { n++; }
+      else if (!lvOn(t)) { break; }   // 请假：跳过继续往前数
       t -= ONE_DAY;
     }
     return n;
@@ -2883,11 +3321,14 @@
         '<div class="mon-card soft"><b>' + (isCur ? streak(wt, m) : bestStreak(wk.ms, wk.end, m)) +
           '</b><div class="u">' + (isCur ? "连续打卡 · 天" : "本周最长连续 · 天") + '</div></div>';
     var doneDays = future ? 0 : activeDays(wk.ms, spanTo, m);
+    // 请假当天不计缺勤：打卡率的分母扣掉已批准的请假天数
+    var lvDays = future ? 0 : lvCountIn(wk.ms, spanTo);
+    var dueDays = Math.max(1, elapsed - lvDays);
     cardsHtml +=
         '<div class="mon-card violet"><b>' + (future ? 0 : sumItems(wk.ms, spanTo, m)) +
           '</b><div class="u">本周完成 · 项</div></div>';
     cardsHtml +=
-        '<div class="mon-card"><b>' + (future ? "–" : Math.round(doneDays / elapsed * 100) + "%") +
+        '<div class="mon-card"><b>' + (future ? "–" : Math.round(doneDays / dueDays * 100) + "%") +
           '</b><div class="u">本周打卡率</div></div>';
 
     for (var t = wk.ms; t < wk.end; t += ONE_DAY) {
@@ -2897,7 +3338,15 @@
       var isToday = t === wt;
       var isFuture = t > wt;
       var cls = "", cHtml = "";
-      if (isFuture) { cls = "tbd"; cHtml = '<span class="s1">还没到</span>'; }
+      var lvRec = lvOn(t);
+      if (lvRec) {
+        // 请假（方案 C · 墨色印记）：不计缺勤、不打断连续打卡
+        cls = "leave";
+        cHtml = '<span class="stamp">休</span>'
+          + '<span class="s1">' + escHtml(lvRec.r) + '</span>'
+          + (lvRec.n ? '<span class="s3">' + escHtml(lvRec.n) + '</span>' : '');
+      }
+      else if (isFuture) { cls = "tbd"; cHtml = '<span class="s1">还没到</span>'; }
       else if (vd + vf <= 0) { cls = ""; cHtml = '<span class="s1">未打卡</span>'; }
       else {
         // 勾了弹性任务 → 蜜桃橙；同时照常显示必做进度，两项信息都不丢
@@ -2908,14 +3357,17 @@
       cellHtml += '<div class="mon-cell ' + cls + (isToday ? " today" : "") + '">'
         + '<div class="d">周' + dayCN[d.getDay()] + '</div>'
         + '<div class="n">' + d.getDate() + '</div>'
-        + '<div class="c">' + cHtml + '</div></div>';
+        + '<div class="c">' + cHtml + '</div>'
+        + '<button type="button" class="leave-btn" data-leave="' + t + '" title="'
+        + (lvRec ? "修改或取消请假" : "给这一天请假") + '">假</button></div>';
     }
     document.getElementById("mon-view-week").innerHTML = headHtml
       + '<div class="mon-cards">' + cardsHtml + '</div>'
       + '<div class="mon-grid">' + cellHtml + '</div>'
       + '<div class="mon-note"><span class="mn-pink">打卡 · 勾了一部分</span><span class="mn-done">完成 · 过半</span>'
       + '<span class="mn-full">满打 · 当天必做全勾</span>'
-      + '<span class="mn-flex">加练 · 这天多勾了弹性任务</span></div>'
+      + '<span class="mn-flex">加练 · 这天多勾了弹性任务</span>'
+      + '<span class="mn-leave">请假 · 已批准，不计缺勤</span></div>'
       + weekDetailHtml(wk, wt, m);
 
     var pv = document.getElementById("wk-prev");
@@ -2991,20 +3443,57 @@
     renderMonth();
   });
 
-  /* ---------- 监测内：本周 / 本月 切换 ---------- */
+  /* ---------- 监测内：本周 / 本月 切换（同款滑块胶囊，见 .mon-toggle 注释） ---------- */
   var mtabs = document.querySelectorAll("#mon-toggle .mon-tab");
+  var monNav = document.getElementById("mon-toggle");
+  var monPill = document.getElementById("mon-tab-pill");
+  var curMon = null;                  // 记住当前子页签；首次定位不播补间
+  function moveMonPill(btn, animate) {
+    if (!monNav || !monPill || !btn) return;
+    var nr = monNav.getBoundingClientRect();
+    var br = btn.getBoundingClientRect();
+    /* 面板还在 display:none 里时量出来是 0×0 —— 放弃这次定位（不加 pill-ready），
+       让 `.mon-toggle:not(.pill-ready) .mon-tab.on` 的兜底高亮顶着，
+       等真正打开监测页时由 switchPage 补测。 */
+    if (!br.width) return;
+    if (!animate) monPill.style.transition = "none";
+    var bw = monNav.clientLeft || 0;  // 绝对定位基准是 padding box，rect 却从边框外沿算起
+    monPill.style.width = br.width + "px";
+    monPill.style.transform = "translateX(" + (br.left - nr.left - bw) + "px)";
+    if (!animate) {
+      void monPill.offsetWidth;       // 立刻落地，别让这次也算成一次补间
+      monPill.style.transition = "";
+    }
+    monNav.classList.add("pill-ready");
+  }
+  function repaintMonPill() {
+    for (var k = 0; k < mtabs.length; k++) {
+      if (mtabs[k].classList.contains("on")) { moveMonPill(mtabs[k], false); return; }
+    }
+  }
   function switchMon(view) {
     document.getElementById("mon-view-week").classList.toggle("hide", view !== "week");
     document.getElementById("mon-view-month").classList.toggle("hide", view !== "month");
+    var active = null;
     for (var i = 0; i < mtabs.length; i++) {
-      mtabs[i].classList.toggle("on", mtabs[i].getAttribute("data-view") === view);
+      var on = mtabs[i].getAttribute("data-view") === view;
+      mtabs[i].classList.toggle("on", on);
+      if (on) active = mtabs[i];
     }
+    /* 先切 .on 再量：.on 会把字重换成 700，先量可能量到旧宽度 */
+    moveMonPill(active, curMon !== null && curMon !== view);
+    curMon = view;
     try { localStorage.setItem(VIEW_KEY, view); } catch (e) {}
   }
   for (var j = 0; j < mtabs.length; j++) {
     (function (tb) {
       tb.addEventListener("click", function () { switchMon(tb.getAttribute("data-view")); });
     })(mtabs[j]);
+  }
+  /* 窗口尺寸变了 / 中文字体晚一步到位 —— 按钮宽度会变，滑块得重新对齐（不播动画） */
+  window.addEventListener("resize", repaintMonPill);
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(repaintMonPill);
   }
 
   /* 勾选任务后实时刷新监测 */
@@ -36364,17 +36853,125 @@
     if (audio.preload === "none") audio.preload = "metadata";
     try { audio.load(); } catch (e) {}
   }
-  /* 跳到第 t 秒。时长已经拿到就立刻跳；没拿到就先记下来，交给 loadedmetadata 补跳。
-     返回 true = 已经跳了，false = 还在读元数据。 */
-  function lsSeek(audio, t) {
-    var d = lsDurOf(audio);
-    if (d > 0) {
-      try { audio.currentTime = Math.max(0, Math.min(d, t)); } catch (e) {}
-      return true;
-    }
-    audio._lsPendingTime = t;
-    lsLoadMeta(audio);
+  /* ---------- 服务器不支持 Range 时的兜底：整段抓成本地 Blob ----------
+     实测（Cloudflare Pages 这类托管很常见）：对 Range 请求直接回 200 + 整个文件、
+     也不带 Accept-Ranges。浏览器于是把这段音频判成"不可寻址"——
+     即使 duration 能算出来，写 currentTime 也会被忽略，表现就是
+     「进度条拖不动、点段落没反应」，但顺序播放一切正常。
+     唯一的解法：把整段音频抓成 Blob 换到 audio.src 上，本地副本就能随便跳。
+     为了不白费流量，只在**真的要跳转**时才抓（见 lsSeek）。 */
+  var LS_CACHE_MAX = 2;                      // 同时最多留 2 段缓存副本（每段约 20MB）
+  var lsCacheSlot = [];                      // [{ audio, objUrl, remote }]
+  function lsSeekable(audio) {
+    try {
+      var sk = audio.seekable;
+      if (sk && sk.length) {
+        var e = sk.end(sk.length - 1);
+        if (isFinite(e) && e > 0) return true;
+      }
+    } catch (e) {}
     return false;
+  }
+  /* 淘汰一段缓存：先把它那张卡退回远程地址（至少还能从头播），再 revoke */
+  function lsCacheRelease(entry) {
+    if (!entry) return;
+    var a = entry.audio;
+    try { URL.revokeObjectURL(entry.objUrl); } catch (e) {}
+    if (a && a._lsBlobUrl === entry.objUrl) {
+      a._lsBlobUrl = null;
+      a._lsNoSeek = true;
+      try { a.src = entry.remote; a.load(); } catch (e) {}
+    }
+  }
+  function lsCacheFetch(audio, onProgress) {
+    var remote = audio._lsRemoteSrc || audio.src;
+    if (!remote || /^blob:/.test(remote)) return Promise.reject(new Error("no remote"));
+    return fetch(remote, { credentials: "same-origin" }).then(function (resp) {
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      var total = parseInt(resp.headers.get("content-length") || "0", 10) || 0;
+      var reader = resp.body && resp.body.getReader ? resp.body.getReader() : null;
+      if (!reader) return resp.blob();
+      var chunks = [], got = 0;
+      return (function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return new Blob(chunks, { type: "audio/mpeg" });
+          chunks.push(r.value);
+          got += r.value.length;
+          if (onProgress) onProgress(got, total);
+          return pump();
+        });
+      })();
+    }).then(function (blob) {
+      if (!blob.size) throw new Error("空音频");
+      var objUrl = URL.createObjectURL(blob);
+      audio._lsRemoteSrc = remote;
+      audio._lsBlobUrl = objUrl;
+      lsCacheSlot.push({ audio: audio, objUrl: objUrl, remote: remote });
+      while (lsCacheSlot.length > LS_CACHE_MAX) lsCacheRelease(lsCacheSlot.shift());
+      return objUrl;
+    });
+  }
+  /* 换成本地副本；换之前记住"是不是正在播"，元数据到了接着播 */
+  function lsCacheAndQueue(audio, onProgress) {
+    if (audio._lsCaching) return "caching";
+    audio._lsCaching = true;
+    var wasPlaying = !audio.paused;
+    lsCacheFetch(audio, onProgress).then(function (objUrl) {
+      audio._lsCaching = false;
+      audio._lsNoSeek = false;
+      audio._lsResume = wasPlaying;
+      audio.preload = "auto";
+      audio.src = objUrl;
+      try { audio.load(); } catch (e) {}
+    }).catch(function () {
+      audio._lsCaching = false;
+      audio._lsBlobFail = true;
+      if (audio._lsOnCacheFail) audio._lsOnCacheFail();
+      else if (audio._lsNoSeekMessage) audio._lsNoSeekMessage();
+    });
+    return "caching";
+  }
+  /* 跳转总入口：
+       sec   = 目标秒数（点段落用）
+       ratio = 0–1（拖进度条用）
+       onProgress(got, total) 只在真要整段缓存时才会被调用
+     返回 "jumped"（已跳）/ "pending"（元数据没到，已排队）/ "caching"（正在整段缓存） */
+  function lsSeek(audio, sec, ratio, onProgress) {
+    var d = lsDurOf(audio);
+    audio._lsPendingSeek = { sec: sec == null ? null : sec, ratio: ratio == null ? null : ratio };
+    if (d > 0 && lsSeekable(audio)) {
+      var t = audio._lsPendingSeek.sec != null ? audio._lsPendingSeek.sec : audio._lsPendingSeek.ratio * d;
+      audio._lsPendingSeek = null;
+      try { audio.currentTime = Math.max(0, Math.min(d, t)); } catch (e) {}
+      return "jumped";
+    }
+    /* 已经换成本地副本了：元数据没到就排队；到了就直接跳（本地副本一定能跳，
+       哪怕浏览器把 seekable 报得不准，这里也兜一层，别让点击静默失效） */
+    if (audio._lsBlobUrl) {
+      if (audio.readyState >= 1 && d > 0) {
+        var wt = audio._lsPendingSeek.sec != null ? audio._lsPendingSeek.sec : audio._lsPendingSeek.ratio * d;
+        audio._lsPendingSeek = null;
+        try { audio.currentTime = Math.max(0, Math.min(d, wt)); } catch (e) {}
+        return "jumped";
+      }
+      return "pending";
+    }
+    /* 元数据还没到手：先读头部（别急着下载整段）；4 秒还不行就直接走缓存 */
+    if (audio.readyState < 1) {
+      lsLoadMeta(audio);
+      if (!audio._lsPendTimer) {
+        audio._lsPendTimer = setTimeout(function () {
+          audio._lsPendTimer = null;
+          if (audio._lsCaching || audio._lsBlobUrl) return;
+          var dd = lsDurOf(audio);
+          if (dd > 0 && lsSeekable(audio)) return;      // 已经能跳了，交给 loadedmetadata 补
+          lsCacheAndQueue(audio, onProgress);
+        }, 4000);
+      }
+      return "pending";
+    }
+    /* 有元数据但不可寻址 → 整段缓存 */
+    return lsCacheAndQueue(audio, onProgress);
   }
   /* 把 audio.error.code 翻成人话 —— 上线后最常见的就是 404（路径大小写 / 没上传） */
   function audioErrText(a) {
@@ -36441,6 +37038,8 @@
       /* 默认完全不预读：这里有 27 套音频，一开页就同时去抓头部的话，
          碰上不支持 Range 的服务器会把整个文件拉下来（几百 MB）。改成"鼠标移上去才读头部"。 */
       audio.preload = "none";
+      /* 记住远程地址：换成本地缓存副本后，仍要用它去抓整段音频 / 退回远程源 */
+      audio._lsRemoteSrc = srcMain || "";
       if (hasAudio) audio.src = srcMain;
 
       var play = document.createElement("button");
@@ -36713,41 +37312,66 @@
       audio.addEventListener("ended", function () { lp.classList.remove("playing"); paintProgress(); });
       audio.addEventListener("loadedmetadata", function () {
         var d = lsDurOf(audio);
+        var canSeek = lsSeekable(audio) && d > 0;
+        audio._lsNoSeek = !canSeek;
+        if (audio._lsPendTimer) { clearTimeout(audio._lsPendTimer); audio._lsPendTimer = null; }
         if (d > 0) dur.textContent = lsClock(d);
-        /* 补跳：拖进度条 / 点段落时元数据还没到手，这里到了就补上 */
-        if (audio._lsPendingRatio != null) {
-          var rt = audio._lsPendingRatio; audio._lsPendingRatio = null;
-          if (d > 0) { try { audio.currentTime = rt * d; } catch (e) {} }
-          paintProgress();
-        }
-        if (audio._lsPendingTime != null) {
-          var pt = audio._lsPendingTime; audio._lsPendingTime = null;
-          if (d > 0) { try { audio.currentTime = Math.min(pt, d); } catch (e) {} }
-          paintProgress();
-          /* 补跳成功了，把"跳到哪一段"补进提示 —— 不然用户只看到"正在读取音频…" */
-          if (audio._lsPendingSec != null) {
-            var psi = audio._lsPendingSec; audio._lsPendingSec = null;
-            showHint("▶ " + (LS_SECS_EN[psi] || "") + " · " + LS_SECS[psi] + "（" + lsClock(pt) + "）");
+        /* 补跳：拖进度条 / 点段落时元数据还没到手（或刚换成缓存副本），这里到了就补上 */
+        if (audio._lsPendingSeek) {
+          var w = audio._lsPendingSeek; audio._lsPendingSeek = null;
+          var tt = w.sec != null ? w.sec : (d > 0 ? w.ratio * d : null);
+          if (tt != null && d > 0) {
+            try { audio.currentTime = Math.max(0, Math.min(d, tt)); } catch (e) {}
+            /* 补跳成功了，把"跳到哪一段"补进提示 —— 不然用户只看到"正在读取音频…" */
+            if (audio._lsPendingSec != null) {
+              var psi = audio._lsPendingSec; audio._lsPendingSec = null;
+              showHint("▶ " + (LS_SECS_EN[psi] || "") + " · " + LS_SECS[psi] + "（" + lsClock(Math.min(d, tt)) + "）");
+            }
           }
+          paintProgress();
         }
-        /* 服务器不返回长度 / 不支持 Range：明确说出来，别让人以为是自己点坏了 */
-        if (!d && !audio._lsWarnNoSeek) {
+        /* 刚换成缓存副本、换之前正在播 → 接着播 */
+        if (audio._lsResume) {
+          audio._lsResume = false;
+          var rp = audio.play();
+          if (rp && rp.catch) rp.catch(function () {});
+        }
+        /* 服务器不支持 Range（Range 请求被忽略 → 整段音频不可寻址）：
+           进度条拖不动、点段落也不跳。直说原因，并告诉用户"点一下就会自动缓存"。 */
+        if (canSeek) {
+          audio._lsWarnNoSeek = false;
+          dur.title = "";
+        } else if (!audio._lsWarnNoSeek) {
           audio._lsWarnNoSeek = true;
-          dur.textContent = "不可拖动";
-          dur.title = "这个地址没有返回音频长度、也不支持 Range 请求，所以拖不动进度。"
-            + "请把音频当作静态文件托管（Cloudflare Pages 直接放文件即可），"
-            + "或确认 CDN / Worker 会把 Range 请求转发给源站。\n" + (audio.currentSrc || audio.src || "");
+          dur.title = "这个地址不支持分段读取（Range 请求被忽略），进度条和段落跳转都要先把整段音频缓存到本地才能用。\n"
+            + "点段落名或拖一下进度条，会自动缓存好再跳过去。\n"
+            + (audio._lsRemoteSrc || audio.currentSrc || audio.src || "");
+          showHint("音频加载中，让我缓一会…");
         }
       });
       audio.addEventListener("timeupdate", paintProgress);
 
-      /* 加载失败：先试备用源（set.alt），还是没有就把这张卡退回"音频待上传" */
+      /* 加载失败：先试备用源（set.alt）；再试"整段抓下来"；都不行才退回"音频待上传" */
       var triedAlt = false;
       audio.addEventListener("error", function () {
         if (!triedAlt && set.alt) {
           triedAlt = true;
+          audio._lsRemoteSrc = set.alt;
           audio.src = set.alt;
           return;
+        }
+        /* moov 放在文件尾部的 m4a：服务器不支持 Range 时连元数据都读不到，
+           直接判"音频取不到"会误伤 —— 先把整段抓成本地副本再试一次。 */
+        if (!audio._lsBlobUrl && !audio._lsTriedBlob) {
+          audio._lsTriedBlob = true;
+          audio._lsOnCacheFail = function () { markNoAudio(audioErrText(audio)); };
+          var res = lsCacheAndQueue(audio, function (got, total) {
+            dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+          });
+          if (res === "caching") {
+            showHint("音频读不出来，让我缓一会…");
+            return;
+          }
         }
         markNoAudio(audioErrText(audio));
       });
@@ -36758,17 +37382,17 @@
         var r = bar.getBoundingClientRect();
         if (!r.width) return;
         var ratio = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-        var d = lsDurOf(audio);
-        if (!d) {
-          /* 时长还没拿到（preload=none + 网络延迟）：先去读元数据，
+        var res = lsSeek(audio, null, ratio, function (got, total) {
+          dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+        });
+        if (res === "jumped") { paintProgress(); return; }
+        if (res === "pending") {
+          /* 时长还没拿到（preload=none + 网络延迟）：先读元数据，
              读到之后 loadedmetadata 会按这次的比例补跳，别让这一下拖空。 */
-          audio._lsPendingRatio = ratio;
-          lsLoadMeta(audio);
           dur.textContent = "读取长度…";
           return;
         }
-        try { audio.currentTime = ratio * d; } catch (e) {}
-        paintProgress();
+        showHint("正在缓存音频，让我缓一会…");
       }
       bar.addEventListener("pointerdown", function (e) {
         if (!hasAudio) return;
@@ -36862,9 +37486,12 @@
           return;
         }
         /* readyState 还是 0 时直接写 currentTime 会被浏览器忽略（只记成起始位置），
-           看起来就是"点了没反应"。走 lsSeek：时长没到就先读，读到后自动补跳。 */
-        audio._lsPendingSec = i;          // 元数据没到手时，补跳完要用它补一条提示
-        var jumped = lsSeek(audio, mk[i]);
+           看起来就是"点了没反应"。走 lsSeek：元数据没到就先读、读到后自动补跳；
+           服务器不支持 Range（整段不可寻址）时会自动整段缓存，缓存好再跳。 */
+        audio._lsPendingSec = i;          // 补跳完要用它补一条提示
+        var res = lsSeek(audio, mk[i], null, function (got, total) {
+          dur.textContent = total ? "缓存 " + Math.round(got * 100 / total) + "%" : "缓存中…";
+        });
         paintProgress();
         /* 「点了以后播」：跳过去的同时直接开播，不然还得再按一次播放键。
            一次只响一个 —— 跟播放键那边的处理保持一致。 */
@@ -36874,9 +37501,13 @@
           var pr = audio.play();
           if (pr && pr.catch) pr.catch(function () {});
         }
-        showHint(jumped
-          ? ("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "（" + lsClock(mk[i]) + "）")
-          : "正在读取音频…");
+        if (res === "jumped") {
+          showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + "（" + lsClock(mk[i]) + "）");
+        } else if (res === "caching") {
+          showHint("▶ " + (LS_SECS_EN[i] || "") + " · " + LS_SECS[i] + " · 让我缓一会…");
+        } else {
+          showHint("音频加载中，让我缓一会…");
+        }
       }
       paintSecs();
 
@@ -37329,6 +37960,24 @@
   renderMonth();
   switchPage(initPage);
 
+  /* ---------- 预热：把两个重页在首屏空闲时先搭好 ----------
+     实测（Chrome headless，2026-09-13，39 套数据）：
+       首次点开「真题解析」要现搭 47,543 个节点 = 136ms；「听力精听」22,567 个节点 = 48ms；
+       而搭好之后再切页只要 3~10ms（显隐本身很便宜）。
+     所以"点下去先僵一下"就是这段搭建时间，不是切换本身。
+     这两个函数构建期不做任何布局测量（所有 getBoundingClientRect 都在点击处理里面，
+     已逐行核对过），所以藏在 display:none 的页面里提前搭不会算错。
+     分两次 idle 回调错开，避免一口气占住主线程太久。 */
+  (function warmUpHeavyViews() {
+    var idle = window.requestIdleCallback
+      ? function (fn, ms) { return window.requestIdleCallback(fn, { timeout: ms }); }
+      : function (fn, ms) { return setTimeout(function () { fn({ timeRemaining: function () { return 0; } }); }, ms); };
+    idle(function () {
+      buildListen();                                  // 22k 节点，约 50ms
+      idle(function () { buildPapers(); }, 2600);     // 47k 节点，约 136ms
+    }, 1800);
+  })();
+
   /* ---------- 跨天自动刷新 ----------
      整页的日期 / 周次 / 阶段 / 倒计时 / 弹性任务的「今天」徽章，都按"进页面那一刻"算一次。
      页面若一直开着跨到第二天，会算错。这里每分钟看一眼日期（切回前台时也看一眼），
@@ -37341,6 +37990,356 @@
     setInterval(checkDay, 60000);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) checkDay(); });
   })();
+
+  /* ============================================================
+     番茄时钟 · 打卡计划页顶部
+     ============================================================ */
+  var FX_KEY = "cet4-focus";          // { "2026-9-13": { n: 2, m: 50 } }
+  var FX_MODE = "cet4-focus-mode";    // { kind, cmin, csec }
+  var F_CIRC = 2 * Math.PI * 122;
+  var fxKind = "work", fxTotal = 1500, fxLeft = 1500, fxRunning = false, fxTimer = null, fxEndAt = 0;
+  var fxCmin = 45, fxCsec = 0, fxEl = {};
+
+  function fxDayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function fxGet(k, dft) {
+    try { var v = localStorage.getItem(k); return v === null ? dft : JSON.parse(v); }
+    catch (e) { return dft; }
+  }
+  function fxSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function fxAll() {
+    var o = fxGet(FX_KEY, {});
+    return (o && typeof o === "object" && !Array.isArray(o)) ? o : {};
+  }
+  function fxOn(ms) {
+    var v = fxAll()[fxDayKey(new Date(ms))];
+    return (v && typeof v === "object") ? { n: v.n | 0, m: v.m | 0 } : { n: 0, m: 0 };
+  }
+  function fxList(sel) { return [].slice.call(document.querySelectorAll(sel)); }
+  function fxClock(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function fxIsBreak() { return fxKind === "short" || fxKind === "long"; }
+  function fxState(t) { if (fxEl.state) fxEl.state.innerHTML = t; }   // innerHTML：允许用 <br> 断行
+  function fxToggleLabel(t) { if (fxEl.toggle) fxEl.toggle.textContent = t; }
+  function fxPaint() {
+    if (!fxEl.time) return;
+    fxEl.time.textContent = fxClock(fxLeft);
+    var p = fxTotal > 0 ? (fxTotal - fxLeft) / fxTotal : 0;
+    p = Math.max(0, Math.min(1, p));
+    fxEl.arc.style.strokeDasharray = F_CIRC;
+    fxEl.arc.style.strokeDashoffset = F_CIRC * (1 - p);
+  }
+  function fxPaintCustom() {
+    if (fxEl.min) fxEl.min.textContent = fxCmin;
+    if (fxEl.sec) fxEl.sec.textContent = (fxCsec < 10 ? "0" : "") + fxCsec;
+  }
+  function fxSyncModes() {
+    fxList("#focus-modes .focus-mode").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-kind") === fxKind);
+    });
+  }
+  function fxSaveMode() { fxSet(FX_MODE, { kind: fxKind, cmin: fxCmin, csec: fxCsec }); }
+  function fxStopTick() { if (fxTimer) { clearInterval(fxTimer); fxTimer = null; } }
+  function fxIdle() {
+    fxEl.ring.classList.remove("running", "done");
+    if (fxKind === "work") {
+      fxState("开始专注<br>攒下第 " + (fxOn(startOfDay(new Date()).getTime()).n + 1) + " 个番茄");
+      fxToggleLabel("开始专注");
+    } else if (fxKind === "custom") {
+      fxState("自定义 " + fxClock(fxTotal) + "<br>点开始");
+      fxToggleLabel(fxIsBreak() ? "开始休息" : "开始专注");
+    } else {
+      fxState((fxKind === "short" ? "短休 " : "长休 ") + fxClock(fxTotal) + "<br>点开始");
+      fxToggleLabel("开始休息");
+    }
+  }
+  function fxSetKind(kind, min) {
+    fxKind = kind;
+    fxTotal = kind === "custom" ? Math.max(1, fxCmin * 60 + fxCsec) : Math.max(1, (min | 0) * 60);
+    fxStopTick();
+    fxRunning = false;
+    fxLeft = fxTotal;
+    fxSyncModes();
+    fxPaint();
+    fxIdle();
+    fxSaveMode();
+  }
+  function fxStart() {
+    if (fxLeft <= 0) fxLeft = fxTotal;
+    fxRunning = true;
+    fxEndAt = Date.now() + fxLeft * 1000;
+    fxStopTick();
+    fxTimer = setInterval(function () {
+      var left = Math.max(0, Math.round((fxEndAt - Date.now()) / 1000));
+      if (left !== fxLeft) { fxLeft = left; fxPaint(); }
+      if (left <= 0) fxFinish();
+    }, 250);
+    fxEl.ring.classList.add("running");
+    fxEl.ring.classList.remove("done");
+    fxToggleLabel("暂停");
+    fxState(fxIsBreak() ? "休息中 · 让眼睛歇一会" : "专注中 · 别切走");
+    fxPaint();
+  }
+  function fxPause() {
+    fxRunning = false;
+    fxStopTick();
+    fxEl.ring.classList.remove("running");
+    fxToggleLabel("继续");
+    fxState("已暂停 · 随时接着来");
+  }
+  function fxCredit(sec) {
+    var mins = Math.max(1, Math.round(sec / 60));
+    var o = fxAll();
+    var k = fxDayKey(new Date());
+    var cur = o[k] && typeof o[k] === "object" ? o[k] : { n: 0, m: 0 };
+    cur.n = (cur.n | 0) + 1;
+    cur.m = (cur.m | 0) + mins;
+    o[k] = cur;
+    fxSet(FX_KEY, o);
+    fxRender();
+  }
+  function fxFinish() {
+    fxStopTick();
+    fxRunning = false;
+    fxLeft = 0;
+    fxPaint();
+    fxEl.ring.classList.remove("running");
+    fxEl.ring.classList.add("done");
+    if (fxIsBreak()) {
+      fxToggleLabel("再来一轮");
+      fxState("休息结束，接着冲");
+    } else {
+      fxCredit(fxTotal);
+      fxToggleLabel("再来一个");
+      fxState("番茄到手！起来动一下");
+    }
+  }
+  function fxReset() {
+    fxStopTick();
+    fxRunning = false;
+    fxLeft = fxTotal;
+    fxEl.ring.classList.remove("running", "done");
+    fxPaint();
+    fxIdle();
+  }
+  function fxRender() {
+    var d = fxAll();
+    var t = fxOn(startOfDay(new Date()).getTime());
+    if (fxEl.cnt) fxEl.cnt.textContent = t.n;
+    if (fxEl.minToday) fxEl.minToday.textContent = t.m;
+    if (fxEl.sub) fxEl.sub.textContent = "今日已专注 " + t.m + " 分钟";
+
+    var n = 0, cur = startOfDay(new Date()), guard = 0;
+    if (!(d[fxDayKey(cur)] && (d[fxDayKey(cur)].m | 0) > 0)) cur = new Date(cur.getTime() - ONE_DAY);
+    while (guard++ < 400) {
+      var kk = fxDayKey(cur);
+      if (d[kk] && (d[kk].m | 0) > 0) { n++; cur = new Date(cur.getTime() - ONE_DAY); } else break;
+    }
+    if (fxEl.days) fxEl.days.textContent = n;
+
+    if (!fxEl.bars) return;
+    var mon = mondayOf(new Date()).getTime();
+    var todayMs = startOfDay(new Date()).getTime();
+    var labels = ["一", "二", "三", "四", "五", "六", "日"];
+    var vals = [], sum = 0, max = 0, act = 0;
+    for (var i = 0; i < 7; i++) {
+      var v = fxOn(mon + i * ONE_DAY).m;
+      vals.push(v); sum += v; if (v > max) max = v; if (v > 0) act++;
+    }
+    var html = "";
+    for (var j = 0; j < 7; j++) {
+      var ms = mon + j * ONE_DAY;
+      var h = max > 0 ? Math.max(5, Math.round(vals[j] / max * 100)) : 5;
+      html += '<div class="fb-cell' + (ms === todayMs ? " today" : "") + '">'
+        + '<div class="fb-wrap"><span class="fb' + (vals[j] > 0 ? "" : " zero") + '" style="height:' + h + '%"></span></div>'
+        + '<span class="fv">' + (vals[j] > 0 ? vals[j] : "\u00A0") + '</span>'
+        + '<span class="fd">' + labels[j] + '</span></div>';
+    }
+    fxEl.bars.innerHTML = html;
+    if (fxEl.weekSum) {
+      fxEl.weekSum.textContent = sum > 0
+        ? ("本周已专注 " + sum + " 分钟 · " + act + " 天有记录")
+        : "本周还没开始专注";
+    }
+  }
+
+  /* ============================================================
+     请假卡 · 方案 C（墨色印记）
+     LV_KEY 定义在前面 Kitty 判定那边（见文件上方注释），不要挪回这里。
+     ============================================================ */
+  var LV_REASONS = ["生病 · 身体不适", "课程 / 考试冲突", "家中有事", "外出 / 旅行", "其他"];
+  var lvEditMs = 0, lvPick = "", lvEl = {};
+
+  function lvAll() {
+    var o = fxGet(LV_KEY, {});
+    return (o && typeof o === "object" && !Array.isArray(o)) ? o : {};
+  }
+  function lvOn(ms) {
+    var v = lvAll()[fxDayKey(new Date(ms))];
+    return (v && typeof v === "object" && v.r) ? v : null;
+  }
+  function lvCountIn(fromMs, toMs) {
+    var o = lvAll(), n = 0;
+    for (var t = fromMs; t < toMs; t += ONE_DAY) if (o[fxDayKey(new Date(t))]) n++;
+    return n;
+  }
+  function lvSave(ms, reason, note) {
+    var o = lvAll();
+    o[fxDayKey(new Date(ms))] = { r: reason, n: note || "", ts: Date.now() };
+    fxSet(LV_KEY, o);
+  }
+  function lvDrop(ms) {
+    var o = lvAll();
+    delete o[fxDayKey(new Date(ms))];
+    fxSet(LV_KEY, o);
+  }
+  function lvSyncChips() {
+    fxList("#lv-chips .leave-chip").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-r") === lvPick);
+    });
+  }
+  function lvClose() { if (lvEl.mask) lvEl.mask.classList.add("hide"); }
+  function lvOpen(ms) {
+    var cur = lvOn(ms);
+    lvEditMs = ms;
+    lvPick = cur ? cur.r : "";
+    var d = new Date(ms);
+    lvEl.date.textContent = (d.getMonth() + 1) + " 月 " + d.getDate() + " 日 · 周" + dayCN[d.getDay()] + " · 全天";
+    lvEl.note.value = cur ? (cur.n || "") : "";
+    lvEl.del.classList.toggle("hide", !cur);
+    lvEl.ok.textContent = cur ? "保存修改" : "确认请假";
+    lvSyncChips();
+    lvEl.mask.classList.remove("hide");
+  }
+  function lvBuild() {
+    var mask = document.createElement("div");
+    mask.className = "leave-mask hide";
+    mask.innerHTML =
+      '<div class="leave-card" role="dialog" aria-modal="true" aria-label="请假卡">'
+      + '<div class="leave-head"><h3>请假卡</h3><span class="leave-badge">已批准 · 不计缺勤</span></div>'
+      + '<div class="leave-date" id="lv-date">—</div>'
+      + '<div class="leave-why">请假理由 · 选一个</div>'
+      + '<div class="leave-chips" id="lv-chips"></div>'
+      + '<input class="leave-note" id="lv-note" type="text" maxlength="40" '
+      + 'placeholder="备注（可选）：比如「上午去医院，下午在家休息」">'
+      + '<div class="leave-tip">请假当天显示「休」而不是「未打卡」：不计入缺勤、不打断连续打卡，'
+      + 'Kitty 的心情和状态都不受影响，也不会把它算成偷懒。</div>'
+      + '<div class="leave-acts">'
+      + '<button type="button" class="leave-btn-del hide" id="lv-del">取消请假</button>'
+      + '<button type="button" class="leave-btn-ok" id="lv-ok">确认请假</button>'
+      + '<button type="button" class="leave-btn-no" id="lv-no">取消</button>'
+      + '</div></div>';
+    document.body.appendChild(mask);
+    lvEl = {
+      mask: mask,
+      date: mask.querySelector("#lv-date"),
+      chips: mask.querySelector("#lv-chips"),
+      note: mask.querySelector("#lv-note"),
+      del: mask.querySelector("#lv-del"),
+      ok: mask.querySelector("#lv-ok"),
+      no: mask.querySelector("#lv-no")
+    };
+    lvEl.chips.innerHTML = LV_REASONS.map(function (r) {
+      return '<button type="button" class="leave-chip" data-r="' + escHtml(r) + '">' + escHtml(r) + '</button>';
+    }).join("");
+    lvEl.chips.addEventListener("click", function (e) {
+      var b = e.target && e.target.closest ? e.target.closest(".leave-chip") : null;
+      if (!b) return;
+      lvPick = b.getAttribute("data-r");
+      lvSyncChips();
+    });
+    lvEl.no.addEventListener("click", lvClose);
+    lvEl.mask.addEventListener("click", function (e) { if (e.target === lvEl.mask) lvClose(); });
+    lvEl.ok.addEventListener("click", function () {
+      if (!lvPick) lvPick = LV_REASONS[0];
+      lvSave(lvEditMs, lvPick, (lvEl.note.value || "").trim());
+      lvClose();
+      renderWeek();
+    });
+    lvEl.del.addEventListener("click", function () {
+      lvDrop(lvEditMs);
+      lvClose();
+      renderWeek();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") lvClose(); });
+
+    var host = document.getElementById("mon-view-week");
+    if (host) {
+      host.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest(".leave-btn") : null;
+        if (!b) return;
+        e.stopPropagation();
+        lvOpen(+b.getAttribute("data-leave"));
+      });
+    }
+  }
+
+  /* ---------- 初始化 ---------- */
+  (function initFocusLeave() {
+    fxEl = {
+      ring: document.getElementById("focus-ring"),
+      time: document.getElementById("focus-time"),
+      state: document.getElementById("focus-state"),
+      sub: document.getElementById("focus-sub"),
+      arc: document.getElementById("focus-arc"),
+      toggle: document.getElementById("focus-toggle"),
+      reset: document.getElementById("focus-reset"),
+      min: document.getElementById("focus-min"),
+      sec: document.getElementById("focus-sec"),
+      cnt: document.getElementById("focus-cnt"),
+      minToday: document.getElementById("focus-min-today"),
+      days: document.getElementById("focus-days"),
+      bars: document.getElementById("focus-bars"),
+      weekSum: document.getElementById("focus-week-sum")
+    };
+    if (fxEl.ring) {
+      var saved = fxGet(FX_MODE, null);
+      if (saved && typeof saved === "object") {
+        if (typeof saved.cmin === "number") fxCmin = Math.min(180, Math.max(1, saved.cmin | 0));
+        if (typeof saved.csec === "number") fxCsec = Math.abs(saved.csec | 0) % 60;
+      }
+      fxPaintCustom();
+      var k = (saved && saved.kind) || "work";
+      if (k === "custom") fxSetKind("custom", 0);
+      else if (k === "short") fxSetKind("short", 5);
+      else if (k === "long") fxSetKind("long", 15);
+      else fxSetKind("work", 25);
+      fxRender();
+
+      fxList("#focus-modes .focus-mode").forEach(function (b) {
+        b.addEventListener("click", function () {
+          fxSetKind(b.getAttribute("data-kind"), +(b.getAttribute("data-min") || 0));
+        });
+      });
+      fxList("#focus .focus-step button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var dir = +(b.getAttribute("data-d"));
+          if (b.getAttribute("data-step") === "m") fxCmin = Math.min(180, Math.max(1, fxCmin + dir));
+          else fxCsec = (fxCsec + dir * 5 + 60) % 60;
+          fxPaintCustom();
+          fxSetKind("custom", 0);
+        });
+      });
+      fxList("#focus-presets button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          fxCmin = Math.min(180, Math.max(1, +(b.getAttribute("data-min") || 25)));
+          fxCsec = 0;
+          fxPaintCustom();
+          fxSetKind("custom", 0);
+        });
+      });
+      if (fxEl.toggle) fxEl.toggle.addEventListener("click", function () {
+        if (fxRunning) fxPause(); else fxStart();
+      });
+      if (fxEl.reset) fxEl.reset.addEventListener("click", fxReset);
+    }
+    lvBuild();
+    renderStats();                      // 请假会参与"连续打卡"计算，重算一次
+    renderWeek();                       // 让周视图带上请假态
+  })();
+
 })();
 
 </script>
