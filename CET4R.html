@@ -1,0 +1,3230 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四级正确率监测</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6B9D'/%3E%3Crect x='13' y='35' width='9' height='16' rx='3' fill='%23fff' opacity='.75'/%3E%3Crect x='27.5' y='25' width='9' height='26' rx='3' fill='%23fff' opacity='.88'/%3E%3Crect x='42' y='13' width='9' height='38' rx='3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   1. Token
+   ============================================================ */
+:root{
+  --font:'Noto Sans SC',system-ui,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  --num:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --r-xs:6px; --r-sm:8px; --r-md:10px; --r-lg:12px; --r-xl:16px; --r-card:18px; --r-pill:999px;
+  --dur:.2s; --ease:cubic-bezier(.32,.72,0,1);
+  /* 主题切换交叉淡入用单独一条对称缓动：--ease 是"前快"型，会让整页明暗变成一次快闪 */
+  --vt-dur:.46s; --vt-ease:cubic-bezier(.42,0,.58,1);
+  /* 入场动效：统一时长与缓动，全站只此一套 */
+  --en:.52s; --en-ease:cubic-bezier(.22,1,.36,1);
+  --side:340px; --gap:16px; --pad-x:28px; --tabw:104px;
+}
+html[data-theme="light"]{
+  --bg:#FFF7FA; --bg-2:#FFFFFF;
+  --surface:#FFFFFF; --surface-2:#FFF7FA; --surface-3:#FFF1F6; --surface-4:#FFFBFD;
+  --ink:#3D2430; --ink-2:#7A6570; --ink-3:#9A8492; --ink-4:#C2AFB9; --ink-5:#DCCDD5;
+  --line:#FFE3ED; --line-2:#FFF1F6; --line-3:#FFDCE9; --line-4:#FFC9DC;
+  --rose:#FF6B9D; --rose-soft:#E04B84; --rose-dim:rgba(255,107,157,.12); --rose-line:rgba(255,107,157,.34);
+  --pink-1:#FFDCE9; --pink-2:#FFA5C0;
+  --ok:#34C99A; --ok-bg:#EAF9F3; --ok-fg:#2FA37C;
+  --amber:#F5A623; --danger:#F2647C; --vocab:#C77DFF; --vocab-bg:#F6EDFF;
+  --track:#FFF1F6; --shadow:0 1px 2px rgba(61,36,48,.04);
+  color-scheme:light;
+  --shadow-h:0 8px 24px rgba(224,75,132,.10), 0 2px 6px rgba(61,36,48,.04);
+  --ghost:rgba(61,36,48,.045); --ghost-2:rgba(61,36,48,.075);
+  --seg-thumb:#FFFFFF;
+  --bg-a:#FFB3CD; --bg-b:#E3C4FF; --bg-c:#B6EEDF;
+  --bg-a-o:.40; --bg-b-o:.30; --bg-c-o:.30;
+  --grid-dot:rgba(61,36,48,.055);
+  --scrim:rgba(61,36,48,.28);
+}
+html[data-theme="dark"]{
+  --bg:#08080A; --bg-2:#0D0D11;
+  --surface:#141419; --surface-2:#1A1A20; --surface-3:#212128; --surface-4:#17171C;
+  --ink:#F2EEF1; --ink-2:#C9C2C8; --ink-3:#9B939B; --ink-4:#6E666E; --ink-5:#4A444B;
+  --line:#26262E; --line-2:#202027; --line-3:#32323B; --line-4:#3E3E48;
+  --rose:#FF6B9D; --rose-soft:#FF8AB7; --rose-dim:rgba(255,107,157,.14); --rose-line:rgba(255,107,157,.38);
+  --pink-1:#3A2430; --pink-2:#C97C9C;
+  --ok:#3FD1A2; --ok-bg:#122B22; --ok-fg:#4FDCAC;
+  --amber:#F0A93C; --danger:#FF7385; --vocab:#B98CFF; --vocab-bg:#221A33;
+  --track:#202027; --shadow:0 1px 2px rgba(0,0,0,.5);
+  color-scheme:dark;
+  --shadow-h:0 10px 28px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+  --ghost:rgba(242,238,241,.05); --ghost-2:rgba(242,238,241,.09);
+  --seg-thumb:#2E2E37;
+  --bg-a:#7A3355; --bg-b:#4A2F73; --bg-c:#14493F;
+  --bg-a-o:.22; --bg-b-o:.16; --bg-c-o:.14;
+  --grid-dot:rgba(242,238,241,.035);
+  --scrim:rgba(0,0,0,.66);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scrollbar-gutter:stable}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font); font-size:13px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  min-height:100vh;
+}
+button,input,select,textarea{font:inherit;color:inherit;background:none;border:none;outline:none}
+button{cursor:pointer}
+a{color:inherit}
+b,strong{font-weight:600}
+.num,.tnum{font-family:var(--num);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:6px;border:3px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--rose);outline-offset:2px;border-radius:4px}
+/* 输入框不自画焦点框：外层 :focus-within 已是唯一一圈描边，否则出现两道框 */
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;appearance:none;margin:0;display:none}
+::selection{background:var(--rose-dim);color:var(--rose-soft)}
+
+/* ============================================================
+   2. 背景装饰
+   ------------------------------------------------------------
+   一层**静态**极淡点阵 + 三团缓慢漂浮的柔光斑。
+   三条自律（就是为了"不要太乱"）：
+     · 不跟鼠标 —— 任何"跟着光标跑的光"都会变成探照灯；
+     · 位移幅度小（±3%）、周期长（30s+）、透明度低，静止看几乎察觉不到在动；
+     · 全部挂在 transform 上（合成层），不触发布局。
+   ============================================================ */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg i{
+  position:absolute;display:block;border-radius:50%;filter:blur(80px);
+  will-change:transform;animation:drift 34s var(--ease) infinite alternate;
+}
+.bg i:nth-child(1){width:46vw;height:46vw;left:-8vw;top:-14vh;background:var(--bg-a);opacity:var(--bg-a-o);animation-duration:34s}
+.bg i:nth-child(2){width:40vw;height:40vw;right:-6vw;top:6vh;background:var(--bg-b);opacity:var(--bg-b-o);animation-duration:42s;animation-delay:-8s}
+.bg i:nth-child(3){width:52vw;height:52vw;left:22vw;bottom:-28vh;background:var(--bg-c);opacity:var(--bg-c-o);animation-duration:38s;animation-delay:-16s}
+@keyframes drift{
+  from{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(2.6vw,-2.2vh,0) scale(1.06)}
+  to{transform:translate3d(-2.2vw,2.4vh,0) scale(.97)}
+}
+/* 点阵：纯静态，低对比，做"纸面质感"用 */
+.bg::after{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size:22px 22px;
+  background-position:center center;
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 30%, #000 30%, transparent 100%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 30%, #000 30%, transparent 100%);
+}
+/* 主题切换：交叉淡入，两帧 opacity 之和恒为 1，中间不闪第三种底色 */
+html.vt-theme::view-transition-old(root){animation:vt-out var(--vt-dur) var(--vt-ease) both}
+html.vt-theme::view-transition-new(root){animation:vt-in var(--vt-dur) var(--vt-ease) both}
+@keyframes vt-out{from{opacity:1}to{opacity:0}}
+@keyframes vt-in{from{opacity:0}to{opacity:1}}
+/* 降级路径：过渡结束再重绘（新节点没有旧值可过渡，提前重绘会跳色） */
+html.theme-anim,html.theme-anim *,html.theme-anim *::before,html.theme-anim *::after{
+  transition:background-color var(--vt-dur) var(--vt-ease),color var(--vt-dur) var(--vt-ease),
+    border-color var(--vt-dur) var(--vt-ease),box-shadow var(--vt-dur) var(--vt-ease),
+    fill var(--vt-dur) var(--vt-ease),stroke var(--vt-dur) var(--vt-ease) !important;
+}
+
+/* ============================================================
+   3. 顶栏
+   ============================================================ */
+.nav{
+  position:sticky;top:0;z-index:60;
+  height:64px;display:flex;align-items:center;gap:22px;
+  padding:0 var(--pad-x);
+  background:color-mix(in srgb, var(--bg-2) 88%, transparent);
+  backdrop-filter:saturate(1.4) blur(12px);
+  -webkit-backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;flex:none}
+/* logo = 一整块纯色（不加任何图形/描边/透明度） */
+.mark{width:26px;height:26px;border-radius:var(--r-sm);background:var(--rose);flex:none}
+.bname{font-size:15px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+.cdt{
+  display:inline-flex;align-items:center;padding:4px 8px;border-radius:var(--r-xs);
+  background:var(--surface-3);color:var(--rose-soft);font-size:10px;white-space:nowrap;
+}
+.tabs{position:relative;display:flex;align-items:center;gap:2px;flex:1;justify-content:center;min-width:0}
+/* 滑块：位置由 JS 按 .on 按钮矩形摆放，切换时靠 transition 滑过去 */
+.tab-thumb{
+  position:absolute;top:0;left:0;height:34px;border-radius:var(--r-sm);
+  background:var(--rose-dim);z-index:0;
+  transition:transform var(--dur) var(--ease),width var(--dur) var(--ease);
+  will-change:transform,width;
+}
+.tab-thumb[hidden]{display:none}
+.tab{
+  position:relative;z-index:1;
+  height:34px;width:var(--tabw);padding:0 10px;border-radius:var(--r-sm);
+  font-size:13px;color:var(--ink-3);
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;
+  transition:color var(--dur) var(--ease);
+}
+.tab:hover{color:var(--ink-2)}
+.tab.on{color:var(--rose-soft)}
+.navact{display:flex;align-items:center;gap:8px;flex:none}
+.ibtn{
+  height:34px;padding:0 12px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line-3);color:var(--ink-2);font-size:13px;
+  transition:background var(--dur),border-color var(--dur),transform var(--dur);
+}
+.ibtn:hover{background:var(--ghost);border-color:var(--line-4)}
+.ibtn:active{transform:scale(.97)}
+.ibtn svg{width:14px;height:14px;flex:none}
+.ibtn.icon{padding:0;width:34px;justify-content:center}
+.pbtn{
+  height:34px;padding:0 16px 0 13px;border-radius:var(--r-sm);background:var(--rose);color:#fff;
+  font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:filter var(--dur),transform var(--dur),box-shadow var(--dur);
+}
+.pbtn:hover{filter:brightness(1.07);box-shadow:0 4px 14px var(--rose-line)}
+.pbtn:active{transform:scale(.97)}
+.pbtn svg{width:14px;height:14px;flex:none}
+
+/* ============================================================
+   4. 骨架
+   ============================================================ */
+.shell{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:minmax(0,1fr) var(--side);
+  gap:var(--gap);align-items:start;
+  max-width:1480px;margin:0 auto;padding:22px var(--pad-x) 56px;
+}
+.main{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+.side{display:flex;flex-direction:column;gap:12px;position:sticky;top:86px}
+@media (max-width:1180px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;order:-1}
+}
+
+/* ============================================================
+   5. 卡片与通用件
+   ============================================================ */
+.card{
+  position:relative;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:18px 20px;min-width:0;
+  transition:box-shadow var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease);
+}
+.card.hoverable:hover{box-shadow:var(--shadow-h);border-color:var(--line-4);transform:translateY(-1px)}
+html[data-theme="dark"] .card{box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 2px 6px rgba(0,0,0,.3)}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.chead .hl{display:flex;align-items:center;gap:8px;min-width:0}
+.chead h3{font-size:14px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+.chead .sub{font-size:11px;color:var(--ink-3);margin-top:3px}
+.chead .meta{font-size:11px;color:var(--ink-4);text-align:right;flex:none}
+.pill{
+  display:inline-flex;align-items:center;gap:4px;flex:none;
+  padding:3px 8px;border-radius:var(--r-xs);background:var(--surface-3);
+  font-size:10px;color:var(--ink-3);white-space:nowrap;transition:background var(--dur),color var(--dur);
+}
+.pill.rose{background:var(--rose-dim);color:var(--rose-soft)}
+.pill.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.pill.warn{background:var(--surface-3);color:var(--amber)}
+.pill.vocab{background:var(--vocab-bg);color:var(--vocab)}
+.dot{width:8px;height:8px;border-radius:3px;flex:none;transition:background var(--dur)}
+.dot.rd{border-radius:50%}
+.row{display:flex;gap:var(--gap);align-items:stretch;min-width:0}
+.row.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+/* 双列布局：左右两列各自纵向堆叠 —— 并排单卡时高度差会夹出大段空白，
+   列式堆叠把空隙赶到列尾，版面立刻干净 */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) var(--rc,400px);gap:var(--gap);align-items:start;min-width:0}
+.cols.lfix{grid-template-columns:var(--lc,480px) minmax(0,1fr);align-items:stretch}
+.cols .col{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+@media (max-width:1180px){
+  .cols,.cols.lfix{grid-template-columns:minmax(0,1fr)}
+}
+.grid{display:grid;gap:var(--gap);min-width:0}
+.hr{height:1px;background:var(--line);border:0;margin:12px 0}
+.empty{
+  padding:34px 16px;text-align:center;color:var(--ink-4);font-size:12px;
+  border:1px dashed var(--line-3);border-radius:var(--r-lg);background:var(--surface-2);
+}
+.foot{font-size:10px;color:var(--ink-4);line-height:1.7}
+
+/* 按钮 */
+.btn{
+  height:36px;padding:0 14px;border-radius:var(--r-md);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:1px solid var(--line-3);color:var(--ink-2);font-size:12px;font-weight:500;
+  transition:background var(--dur),border-color var(--dur),transform var(--dur),filter var(--dur);
+}
+.btn:hover{background:var(--ghost);border-color:var(--line-4)}
+.btn:active{transform:scale(.98)}
+.btn.p{background:var(--rose);border-color:var(--rose);color:#fff;font-weight:600}
+.btn.p:hover{filter:brightness(1.07);background:var(--rose);box-shadow:0 4px 14px var(--rose-line)}
+.btn.g{background:var(--surface-3);border-color:var(--line-4);color:var(--rose-soft);font-weight:600}
+.btn.d{border-color:var(--rose-line);color:var(--danger)}
+.btn.d:hover{background:var(--rose-dim)}
+.btn.sm{height:30px;padding:0 10px;font-size:11px;border-radius:var(--r-sm)}
+.btn.blk{width:100%}
+.btn svg{width:14px;height:14px;flex:none}
+
+/* 分段器：一根长条 + 一枚滑块，点击时滑块滑过去（不是每块独立按钮） */
+.seg{position:relative;display:inline-flex;padding:4px;background:var(--surface-3);border-radius:11px;isolation:isolate}
+.seg button{
+  position:relative;z-index:1;height:32px;padding:0 14px;border-radius:8px;
+  font-size:12px;color:var(--ink-3);white-space:nowrap;
+  transition:color var(--dur) var(--ease);
+}
+.seg button:hover{color:var(--ink-2)}
+.seg button.on{color:var(--rose-soft)}
+.seg-thumb{
+  position:absolute;top:4px;bottom:4px;left:0;border-radius:8px;background:var(--seg-thumb);
+  box-shadow:0 1px 3px rgba(61,36,48,.10);z-index:0;
+  transition:transform var(--dur) var(--ease),width var(--dur) var(--ease);
+  will-change:transform,width;
+}
+html[data-theme="dark"] .seg-thumb{box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.seg.sm{padding:3px;border-radius:9px}
+.seg.sm button{height:26px;padding:0 10px;font-size:11px;border-radius:7px}
+.seg.sm .seg-thumb{top:3px;bottom:3px;border-radius:7px}
+.seg.fw{display:flex;width:100%}
+.seg.fw button{flex:1;padding:0 6px}
+
+/* 表单 */
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field > label{font-size:10px;color:var(--ink-3)}
+.inp{
+  height:36px;padding:0 10px;border-radius:var(--r-md);
+  background:var(--surface-2);border:1px solid var(--line-3);
+  font-size:13px;color:var(--ink);width:100%;
+  transition:border-color var(--dur),background var(--dur),box-shadow var(--dur);
+}
+.inp:hover{border-color:var(--line-4)}
+.inp::placeholder{color:var(--ink-4)}
+.field:focus-within .inp{border-color:var(--rose);background:var(--surface);box-shadow:0 0 0 3px var(--rose-dim)}
+textarea.inp{height:auto;min-height:60px;padding:8px 10px;resize:vertical;line-height:1.6}
+.inp.num{font-family:var(--num);font-variant-numeric:tabular-nums;text-align:center;height:44px;font-size:17px;font-weight:600}
+/* 侧栏空间只有 340px，表单控件整体收一号 —— 大输入框是给主区表单用的 */
+.side .inp{height:32px;font-size:12px;padding:0 9px;border-radius:8px}
+.side .inp.num{height:34px;font-size:13px;font-weight:600}
+.side textarea.inp{min-height:46px;padding:7px 9px;font-size:12px}
+.side .chip{height:25px;padding:0 10px;font-size:10.5px}
+.side .btn.blk{height:38px}
+.side .field > label{font-size:9.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  height:28px;padding:0 12px;border-radius:var(--r-pill);display:inline-flex;align-items:center;
+  background:var(--surface-2);border:1px solid var(--line-3);color:var(--ink-2);font-size:11px;font-weight:500;
+  transition:background var(--dur),border-color var(--dur),color var(--dur),transform var(--dur);
+}
+.chip:hover{border-color:var(--rose-line);color:var(--rose-soft)}
+.chip:active{transform:scale(.96)}
+.chip.on{background:var(--rose);border-color:var(--rose);color:#fff}
+.chip.on:hover{color:#fff}
+.chip .cd{width:7px;height:7px;border-radius:50%;margin-right:6px;background:currentColor;opacity:.75}
+.chip.on .cd{background:#fff;opacity:.9}
+/* 智能推荐行：模块 chips 上方的一条可点推荐 */
+.reco-row{
+  width:100%;display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  padding:9px 11px;border-radius:10px;text-align:left;
+  background:var(--rose-dim);border:1px solid var(--rose-line);
+  transition:background var(--dur),border-color var(--dur),transform var(--dur);
+}
+.reco-row:hover{background:var(--rose-line);transform:translateY(-1px)}
+.reco-row:active{transform:scale(.985)}
+
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th,.tbl td{padding:9px 8px;text-align:left;border-bottom:1px solid var(--line-2)}
+.tbl th{font-size:10px;color:var(--ink-4);font-weight:400;white-space:nowrap}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl tbody tr{transition:background var(--dur)}
+.tbl tbody tr:hover{background:var(--surface-2)}
+.tbl tr.grp td{background:var(--surface-3);font-weight:600;font-size:11px;color:var(--rose-soft);border-bottom-color:transparent}
+.tbl tr.grp:hover td{background:var(--surface-3)}
+.tbl tr.sum td{background:var(--surface-3);font-weight:600}
+.tbl .ops{display:inline-flex;gap:10px}
+.tbl .ops button{font-size:11px;color:var(--rose-soft);font-weight:500;transition:opacity var(--dur)}
+.tbl .ops button:hover{opacity:.7}
+.tbl .ops button.del{color:var(--danger)}
+
+/* 环形进度 */
+.ring{flex:none;display:block}
+.ring .arc{transition:stroke-dasharray .7s var(--en-ease)}
+
+/* 条形 */
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;flex-direction:column;gap:4px;padding:9px 12px;border-radius:var(--r-lg);background:var(--surface-2);transition:background var(--dur),box-shadow var(--dur)}
+.bar-row.hi{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-4)}
+.bar-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bar-name{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;width:66px;flex:none;min-width:0}
+.bar-line{display:flex;align-items:center;gap:10px}
+.bar-track{position:relative;flex:1;height:10px;border-radius:5px;background:var(--track);overflow:hidden}
+.bar-track.thin{height:8px;border-radius:4px}
+.bar-fill{
+  position:absolute;left:0;top:0;bottom:0;border-radius:inherit;
+  width:0;transition:width .85s var(--ease),background .5s var(--ease);
+}
+.bar-goal{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);border-radius:1px;opacity:.55}
+.bar-val{font-size:13px;font-weight:700;flex:none;min-width:52px;text-align:right}
+.bar-sub{font-size:10px;color:var(--ink-3);display:flex;align-items:center;gap:8px;padding-left:76px}
+.bar-sub .sp{flex:1}
+/* 模块条：照 GK —— 扁平行，名称 | 轨道 | 题量 | 正确率 四列全表对齐 */
+.mrows{display:flex;flex-direction:column}
+.mrow{display:flex;align-items:center;gap:14px;padding:9px 4px;border-bottom:1px solid var(--line-2)}
+.mrow:last-child{border-bottom:none}
+.mname{width:118px;flex:none;display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;min-width:0;white-space:nowrap}
+.mname .pill{flex:none;font-size:9px;padding:2px 7px}
+.mcount{width:64px;flex:none;text-align:right;font-size:11px;color:var(--ink-3)}
+.mrate{width:74px;flex:none;text-align:right;font-size:13.5px;font-weight:700}
+/* 子模块条行 */
+.sub-row{display:flex;align-items:center;gap:10px}
+.sub-name{font-size:11px;color:var(--ink-2);flex:none;width:76px}
+.sub-meta{font-size:10px;color:var(--ink-3);flex:none;text-align:right;min-width:52px}
+
+/* KPI 区：照 GK 行测页 —— 两张大环卡 + 右侧 2×2 小卡网格 */
+.krow{display:grid;grid-template-columns:repeat(2,minmax(250px,320px)) minmax(0,1fr);gap:var(--gap)}
+.kbig{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);
+  padding:16px 18px 14px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;
+  transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease),border-color var(--dur) var(--ease);
+}
+.kbig:hover{box-shadow:var(--shadow-h);transform:translateY(-2px);border-color:var(--line-4)}
+.kbig .kb-top{width:100%;display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3)}
+.kbig .kb-ring{position:relative;display:flex;align-items:center;justify-content:center;margin:4px 0 2px}
+.kbig .kb-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center}
+.kbig .kb-val{font-size:24px;font-weight:700;line-height:1.05;letter-spacing:-.3px}
+.kbig .kb-sub{font-size:10px;color:var(--ink-3)}
+.kbig .kb-in{gap:4px}
+.kbig .kb-foot{font-size:10px;color:var(--ink-4);text-align:center}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:var(--gap);min-width:0}
+.kmini{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);
+  padding:14px 18px;display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;
+  transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease),border-color var(--dur) var(--ease);
+}
+.kmini:hover{box-shadow:var(--shadow-h);transform:translateY(-2px);border-color:var(--line-4)}
+.kmini .klab{font-size:10.5px;color:var(--ink-3)}
+.kmini .kval{font-size:24px;font-weight:700;line-height:1.1}
+.kmini .ksub{font-size:10px;color:var(--ink-3)}
+
+/* 自定义日期选择器：原生日历弹层无法融入主题，自己做一套跟主题同 token 的 */
+.dp{position:relative}
+.dp .dp-face{cursor:pointer}
+.dp-panel{
+  position:absolute;top:calc(100% + 6px);left:0;z-index:170;width:262px;
+  background:var(--surface);border:1px solid var(--line-3);border-radius:var(--r-lg);
+  box-shadow:var(--shadow-h);padding:12px;animation:fadeIn .16s var(--ease);
+}
+.dp-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
+.dp-title{font-size:12.5px;font-weight:600}
+.dp-nav{display:flex;gap:2px}
+.dp-nav button{width:24px;height:24px;border-radius:7px;color:var(--ink-3);display:grid;place-items:center;font-size:13px}
+.dp-nav button:hover{background:var(--ghost);color:var(--ink)}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.dp-wd{font-size:9.5px;color:var(--ink-4);padding:3px 0}
+.dp-day{height:27px;border-radius:8px;font-size:11.5px;display:grid;place-items:center;cursor:pointer;color:var(--ink-2);transition:background var(--dur)}
+.dp-day:hover{background:var(--ghost)}
+.dp-day.dim{color:var(--ink-5);opacity:.5}
+.dp-day.sel{background:var(--rose);color:#fff;font-weight:700}
+.dp-day.td{box-shadow:inset 0 0 0 1px var(--rose-line)}
+.dp-foot{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line-2)}
+.dp-foot button{font-size:11px;color:var(--ink-3);padding:4px 8px;border-radius:7px}
+.dp-foot button:hover{background:var(--ghost);color:var(--ink)}
+
+/* 图表容器 */
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.spark-path{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.1s var(--en-ease) .1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.spark-area{opacity:0;animation:fadeIn .8s var(--ease) .45s forwards}
+@keyframes fadeIn{to{opacity:1}}
+.bar-g{
+  transform-box:fill-box;transform-origin:bottom center;
+  animation:grow .7s var(--en-ease) both;
+}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.pt{opacity:0;animation:pop .4s var(--en-ease) both}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+.pt{transform-box:fill-box;transform-origin:center}
+.legend{display:flex;align-items:center;gap:12px;font-size:10px;color:var(--ink-3);flex-wrap:wrap}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+
+/* 数据点/网格（SVG 用色，跟随主题变量） */
+.g-line{stroke:var(--line)}
+.g-soft{stroke:var(--line-2)}
+.t-ink{fill:var(--ink)} .t-ink2{fill:var(--ink-2)} .t-ink3{fill:var(--ink-3)} .t-ink4{fill:var(--ink-4)}
+
+/* Toast */
+.toasts{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px solid var(--line-3);border-radius:var(--r-lg);
+  padding:10px 12px 10px 14px;box-shadow:0 10px 30px rgba(61,36,48,.16);
+  font-size:12px;color:var(--ink-2);animation:toastIn .4s var(--en-ease) both;max-width:min(560px,90vw);
+}
+html[data-theme="dark"] .toast{box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.toast.out{animation:toastOut .28s var(--ease) both}
+.toast .undo{color:var(--rose-soft);font-weight:600;white-space:nowrap;padding:3px 8px;border-radius:var(--r-xs);background:var(--rose-dim)}
+.toast .undo:hover{filter:brightness(1.06)}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px) scale(.97)}}
+
+/* 弹窗 */
+.scrim{position:fixed;inset:0;z-index:150;background:var(--scrim);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:60px 20px;overflow:auto;animation:fadeIn .22s var(--ease)}
+.modal{
+  width:min(680px,100%);background:var(--surface);border:1px solid var(--line-3);border-radius:var(--r-card);
+  box-shadow:0 24px 70px rgba(61,36,48,.22);animation:modalIn .38s var(--en-ease) both;
+}
+html[data-theme="dark"] .modal{box-shadow:0 24px 70px rgba(0,0,0,.6)}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+.modal .mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line-2)}
+.modal .mbody{padding:16px 20px 18px}
+.modal .mfoot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line-2)}
+/* 弹窗内表单：白底描边输入框 + 左对齐数字 —— 沿用侧栏的粉底/居中大字在弹窗里显糊 */
+.modal .inp{background:var(--surface);border-color:var(--line-4)}
+.modal .field:focus-within .inp{border-color:var(--rose);box-shadow:0 0 0 3px var(--rose-dim)}
+.modal .inp.num{height:40px;font-size:14px;font-weight:600;text-align:left;padding:0 12px;letter-spacing:.01em}
+.modal textarea.inp{min-height:72px}
+.modal .field > label{font-size:11px;font-weight:500;color:var(--ink-2);letter-spacing:.02em}
+.mclose{width:28px;height:28px;border-radius:var(--r-sm);color:var(--ink-3);display:grid;place-items:center;transition:background var(--dur),color var(--dur)}
+.mclose:hover{background:var(--ghost);color:var(--ink)}
+.mclose svg{width:15px;height:15px}
+
+/* 里程碑庆祝 */
+.celebrate{
+  position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:300;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  animation:cele 2.6s var(--en-ease) both;
+}
+.celebrate .cbadge{
+  width:76px;height:76px;border-radius:50%;display:grid;place-items:center;
+  background:var(--rose);color:#fff;font-size:26px;font-weight:800;font-family:var(--num);
+  box-shadow:0 14px 40px var(--rose-line);animation:pulse 1.1s var(--en-ease) 2;
+}
+.celebrate .ctxt{font-size:13px;font-weight:600;color:var(--rose-soft);background:var(--surface);padding:6px 14px;border-radius:var(--r-pill);border:1px solid var(--line-3)}
+@keyframes cele{0%{opacity:0;transform:translateX(-50%) scale(.6)}16%{opacity:1;transform:translateX(-50%) scale(1.04)}24%{transform:translateX(-50%) scale(1)}82%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-24px) scale(.96)}}
+@keyframes pulse{50%{transform:scale(1.14)}}
+
+/* 新手引导：变暗遮罩留出高亮孔 + 说明卡 + 指向箭头 */
+.guide-block{position:fixed;inset:0;z-index:250}
+.guide-hl{
+  position:fixed;z-index:251;pointer-events:none;border:2px solid var(--rose);border-radius:14px;
+  box-shadow:0 0 0 5px rgba(255,107,157,.22),0 0 0 200vmax rgba(12,9,13,.55);
+  transition:left .35s var(--ease),top .35s var(--ease),width .35s var(--ease),height .35s var(--ease);
+}
+.guide-arrow{
+  position:fixed;z-index:252;width:13px;height:13px;background:var(--surface);
+  border:1px solid var(--line-3);transform:rotate(45deg);
+}
+.guide-card{
+  position:fixed;z-index:253;width:min(410px,calc(100vw - 32px));
+  background:var(--surface);border:1px solid var(--line-3);border-radius:var(--r-lg);
+  box-shadow:0 18px 50px rgba(12,9,13,.4);padding:18px 20px 16px;
+  animation:modalIn .35s var(--en-ease) both;
+}
+.guide-card .gt{font-size:15.5px;font-weight:700;display:flex;align-items:center;gap:10px}
+.guide-card .gt i{
+  width:24px;height:24px;border-radius:8px;background:var(--rose);color:#fff;flex:none;
+  display:grid;place-items:center;font-size:12.5px;font-style:normal;font-family:var(--num);font-weight:700;
+}
+.guide-card .gb{font-size:13.5px;color:var(--ink-2);line-height:1.85;margin-top:9px}
+.guide-card .gb b{color:var(--rose-soft)}
+.guide-card .gf{display:flex;align-items:center;gap:8px;margin-top:14px}
+.guide-dots{display:flex;gap:5px;flex:1}
+.guide-dots i{width:6px;height:6px;border-radius:3px;background:var(--line-4);transition:all var(--dur)}
+.guide-dots i.on{background:var(--rose);width:16px}
+.guide-card .btn.nk{border:none;background:none;padding:0 4px;font-size:12px;color:var(--ink-4)}
+.guide-card .btn.nk:hover{background:none;color:var(--ink-2)}
+
+/* 滚动进入视口 */
+.reveal{opacity:0;transform:translateY(14px)}.reveal.in{opacity:1;transform:none;transition:opacity var(--en) var(--en-ease),transform var(--en) var(--en-ease)}
+/* 侧栏与内容区的入场：只做一次，不随每次 render 重放 */
+.enter > *{animation:enterUp var(--en) var(--en-ease) both}
+@keyframes enterUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.enter > *:nth-child(1){animation-delay:.02s}
+.enter > *:nth-child(2){animation-delay:.06s}
+.enter > *:nth-child(3){animation-delay:.10s}
+.enter > *:nth-child(4){animation-delay:.14s}
+.enter > *:nth-child(5){animation-delay:.18s}
+.enter > *:nth-child(6){animation-delay:.22s}
+.enter > *:nth-child(n+7){animation-delay:.26s}
+
+/* 提示条 */
+.hint{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-lg);
+  background:var(--surface-3);font-size:11px;color:var(--ink-2);
+}
+.hint svg{width:13px;height:13px;flex:none;color:var(--rose-soft)}
+.hint.warn{background:var(--surface-3);color:var(--ink-2)}
+
+/* 网格线（双轴图） */
+.dual .axis-lab{font-size:9px;fill:var(--ink-4)}
+
+@media (prefers-reduced-motion: reduce){
+  .bg i{animation:none}
+  .enter > *,.toast,.modal,.celebrate,.spark-path,.spark-area,.bar-g,.pt{animation:none !important}
+  .reveal{opacity:1;transform:none}
+  .spark-path{stroke-dashoffset:0}
+  .spark-area,.pt{opacity:1}
+  .ring .arc,.bar-fill,.tab-thumb,.seg-thumb{transition:none}
+}
+/* ============================================================
+   quiet 模式：分段器 / 筛选这类小操作只重建数据，不重放整页动画。
+   没有它，点任何一处分段器都会让卡片入场、条形生长、折线描边、
+   热力格淡入全部重演一遍 —— 这就是"动一个、全都在动"的根源。
+   ============================================================ */
+body.quiet .enter > *{animation:none}
+body.quiet .spark-path{animation:none;stroke-dashoffset:0}
+body.quiet .spark-area,body.quiet .pt{animation:none;opacity:1}
+body.quiet .bar-g{animation:none}
+body.quiet .ring .arc{transition:none}
+body.quiet .tab-thumb,body.quiet .seg-thumb{transition:none}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="nav">
+  <div class="brand">
+    <span class="mark"></span>
+    <span class="bname">四级正确率监测</span>
+    <span class="cdt num" id="cdt"></span>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="navact">
+    <button class="ibtn icon" id="btn-theme" data-act="toggleTheme" title="切换深浅色"></button>
+    <button class="ibtn" id="btn-settings" data-act="openSettings" title="设置">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span>设置</span>
+    </button>
+    <button class="pbtn" id="btn-quick" data-act="quick">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 5.5v13M5.5 12h13" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>记一笔
+    </button>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="main" id="main"></section>
+  <aside class="side" id="side"></aside>
+</main>
+
+<div class="toasts" id="toasts"></div>
+<div id="modal-root"></div>
+
+<script>
+/* ============================================================
+   1. 常量
+   ============================================================ */
+const LS_KEY='cet4_tracker_v1', LS_THEME='cet4_rate_theme_v1';
+
+/* 模块表：parent=null 为一级模块。score 是 710 制权重（只用于提分贡献排序），
+   与「每题原始分」raw 完全无关 —— 后者只用于卷面 100 制折算。 */
+const MODULES=[
+  {id:'listen',     name:'听力',    short:'听力', parent:null, color:'#FF6B9D', target:75, score:248.5, order:1},
+  {id:'listen_news',name:'新闻听力',              parent:'listen', order:1},
+  {id:'listen_conv',name:'长对话',                parent:'listen', order:2},
+  {id:'listen_pass',name:'听力篇章',              parent:'listen', order:3},
+
+  {id:'read',       name:'阅读',    short:'阅读', parent:null, color:'#FF9EC4', target:80, score:248.5, order:2},
+  {id:'read_word',  name:'选词填空',              parent:'read',   order:1},
+  {id:'read_match', name:'长篇匹配',              parent:'read',   order:2},
+  {id:'read_care',  name:'仔细阅读',              parent:'read',   order:3},
+
+  {id:'write',      name:'写作',    short:'写作', parent:null, color:'#FFB48F', target:70, score:106.5, mode:'subjective', order:3},
+  {id:'write_arg',  name:'议论文',                parent:'write',  order:1},
+  {id:'write_app',  name:'应用文',                parent:'write',  order:2},
+
+  {id:'trans',      name:'翻译',    short:'翻译', parent:null, color:'#8FD4C8', target:70, score:106.5, mode:'subjective', order:4},
+  {id:'trans_c2e',  name:'汉译英',                parent:'trans',  order:1},
+
+  {id:'word',       name:'背单词',  short:'单词', parent:null, color:'#C77DFF', score:0, type:'vocab', order:5},
+  {id:'word_new',   name:'新词',                  parent:'word',   order:1, kind:'new'},
+  {id:'word_rev',   name:'复习',                  parent:'word',   order:2, kind:'review'},
+];
+
+/* 每题原始分：卷面满分 100 = 听力 35 + 阅读 35 + 写作 15 + 翻译 15。
+   注意「听力篇章 / 仔细阅读每题 2 分」「选词填空每题 0.5 分」——
+   正因每题分值不等，正确率不能直接乘 710 权重。 */
+const RAW={
+  listen_news:{qty:7, per:1,   group:'listen', full:7},
+  listen_conv:{qty:8, per:1,   group:'listen', full:8},
+  listen_pass:{qty:10,per:2,   group:'listen', full:20},
+  read_word:  {qty:10,per:0.5, group:'read',   full:5},
+  read_match: {qty:10,per:1,   group:'read',   full:10},
+  read_care:  {qty:10,per:2,   group:'read',   full:20},
+};
+/* 常模参数组（官方不公布，取经验值） */
+const NORMS={
+  conservative:{mean:55, sd:15, name:'保守'},
+  neutral:     {mean:52, sd:14, name:'中性'},
+  optimistic:  {mean:50, sd:13, name:'乐观'},
+};
+const DEFAULT_SETTINGS={
+  accuracyMode:'weighted', weekStart:'mon', minQuestions:5, includeVocab:false,
+  examDate:'2026-12-19', passLine:425, normParams:'neutral', vocabBookSize:4500,
+  reviewThreshold:85, theme:'light', milestones:[100,500,1000,2000],
+  targets:{overall:70, objective:75, subjective:70, byModule:{listen:75, read:80, write:70, trans:70}},
+  thresholds:{module:30, subtype:20},
+  colorBands:[65,72,80],
+  goals:{weeklyAccuracy:70, weeklyTotal:200},
+  paperRange:0,   /* 卷面折算采样范围（天）；0 = 全部累计 */
+};
+
+/* ============================================================
+   2. 工具
+   ============================================================ */
+const p2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const $=s=>document.querySelector(s);
+const $$=s=>Array.prototype.slice.call(document.querySelectorAll(s));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 全站百分比恒两位小数：手拼 +v+'%' 一律走这里 */
+const pct=v=>(v==null?'—':(+v).toFixed(2)+'%');
+const pct1=v=>(v==null?'—':(+v).toFixed(1)+'%');
+const r1=v=>(v==null?'—':(+v).toFixed(1));
+const r2=v=>(v==null?'—':(+v).toFixed(2));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sum=a=>a.reduce((x,y)=>x+y,0);
+
+function parseDay(s){const [y,m,d]=String(s).split('-').map(Number);return new Date(y,m-1,d);}
+function addDays(d,n){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x;}
+function dayDiff(a,b){return Math.round((parseDay(b)-parseDay(a))/864e5);}
+function todayStr(){return ymd(new Date());}
+function weekStart(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const dw=(x.getDay()+6)%7;x.setDate(x.getDate()-dw);return x;}
+function fmtDate(s){const d=parseDay(s);return p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+const WD=['周日','周一','周二','周三','周四','周五','周六'];
+function fmtDateCn(s){const d=parseDay(s);return s+' '+WD[d.getDay()];}
+function daysLeft(){return dayDiff(todayStr(),DB.settings.examDate);}
+
+/* ============================================================
+   3. 存储 / 演示数据
+   ============================================================ */
+function modById(id){return DB.modules.find(m=>m.id===id)||null;}
+function childrenOf(id){return DB.modules.filter(m=>m.parent===id).sort((a,b)=>a.order-b.order);}
+function roots(){return DB.modules.filter(m=>!m.parent).sort((a,b)=>a.order-b.order);}
+/* 该模块 + 其全部子孙的 id（父模块统计走子树加权，不是子模块正确率平均） */
+function subtree(id){
+  const out=[id];
+  for(const c of childrenOf(id)) out.push.apply(out,subtree(c.id));
+  return out;
+}
+function isSub(id){const m=modById(id);return !!(m&&m.parent);}
+/* 沿父链向上判断：word_new / word_rev 自身没有 type 字段，type 在父级 word 上 ——
+   只查节点自身会把单词子模块判成非单词，"不计入整体正确率"就失效了 */
+function isVocab(id){
+  let m=modById(id);
+  while(m){if(m.type==='vocab')return true;m=m.parent?modById(m.parent):null;}
+  return false;
+}
+function isSubjective(id){const m=modById(id);return !!(m&&m.mode==='subjective')||subtree(id).some(x=>{const y=modById(x);return y&&y.mode==='subjective';});}
+function modPath(id){
+  const m=modById(id);if(!m)return '未知';
+  if(!m.parent)return m.name;
+  const p=modById(m.parent);return (p?p.name+' · ':'')+m.name;
+}
+
+/* 一条记录的折算：客观题 n=题目数 hit=正确数；主观题 n=满分 hit=实得 */
+function recStat(r){return r.mode==='subjective'?{n:+r.fullScore||0,hit:+r.gotScore||0}:{n:+r.total||0,hit:+r.correct||0};}
+function rateOf(hit,n){return n>0?hit/n*100:null;}
+
+/* 记录子集 → 加权汇总；口径可切简单平均 */
+function agg(recs){
+  if(!recs.length)return {n:0,hit:0,rate:null,count:0};
+  const mode=DB.settings.accuracyMode;
+  let n=0,hit=0;
+  for(const r of recs){const s=recStat(r);n+=s.n;hit+=s.hit;}
+  if(mode==='average'){
+    const rs=recs.map(r=>{const s=recStat(r);return s.n>0?s.hit/s.n*100:null;}).filter(v=>v!=null);
+    return {n,hit,rate:rs.length?sum(rs)/rs.length:null,count:recs.length};
+  }
+  return {n,hit,rate:rateOf(hit,n),count:recs.length};
+}
+
+/* 时间范围过滤：days=0 表示全部 */
+function inRange(rec,rng){
+  if(!rng)return true;
+  const t=todayStr(),back=dayDiff(rec.date,t);
+  return back<=rng.days;
+}
+function rangeRecs(days,moduleId){
+  const ids=moduleId?subtree(moduleId):null;
+  /* 明确要看单词模块时当然要放行；只有"看全部"时才按 includeVocab 决定 */
+  const allowVocab=moduleId?isVocab(moduleId):DB.settings.includeVocab;
+  return DB.records.filter(r=>{
+    if(ids&&ids.indexOf(r.module)<0)return false;
+    if(!allowVocab&&isVocab(r.module))return false;
+    return days?dayDiff(r.date,todayStr())<days:true;
+  });
+}
+/* 只取"计入整体正确率"的记录（默认排除单词） */
+function coreRecs(list){
+  return list.filter(r=>!isVocab(r.module)||DB.settings.includeVocab);
+}
+/* 按模块聚合，模块值走子树加权 */
+function modAgg(list,id){
+  const ids=subtree(id);
+  return agg(list.filter(r=>ids.indexOf(r.module)>=0));
+}
+
+/* 四档达标染色。返回真实色值 —— SVG 的 presentation attribute 不认 CSS 变量，
+   所以全站统一吐 hex，HTML 的 style 与 SVG 的 fill/stroke 都能直接用。 */
+function colorOf(v){
+  if(v==null)return '#C2AFB9';
+  const [a,b,c]=DB.settings.colorBands;
+  if(v<a)return '#F2647C';
+  if(v<b)return '#F5A623';
+  if(v<c)return '#FF6B9D';
+  return '#34C99A';
+}
+const colorHex=colorOf;
+
+/* 周序列：最近 n 周，每周 [{start,end,recs,agg}] */
+function weeksSeries(n,moduleId){
+  const ids=moduleId?subtree(moduleId):null;
+  const base=weekStart(new Date());
+  const out=[];
+  for(let i=n-1;i>=0;i--){
+    const s=addDays(base,-7*i), e=addDays(s,6);
+    const rs=DB.records.filter(r=>{
+      if(ids&&ids.indexOf(r.module)<0)return false;
+      if(!DB.settings.includeVocab&&isVocab(r.module)&&!moduleId)return false;
+      const d=parseDay(r.date);return d>=s&&d<=e;
+    });
+    out.push({start:ymd(s),end:ymd(e),recs:rs,agg:agg(rs)});
+  }
+  return out;
+}
+/* 日序列：最近 n 天，每天 {date,recs,agg} */
+function daysSeries(n,moduleId){
+  const ids=moduleId?subtree(moduleId):null;
+  const out=[];
+  for(let i=n-1;i>=0;i--){
+    const d=addDays(new Date(),-i), ds=ymd(d);
+    const rs=DB.records.filter(r=>{
+      if(r.date!==ds)return false;
+      if(ids)return ids.indexOf(r.module)>=0;
+      return DB.settings.includeVocab||!isVocab(r.module);
+    });
+    out.push({date:ds,recs:rs,agg:agg(rs)});
+  }
+  return out;
+}
+/* 最小二乘斜率（自变量取序号） */
+function slope(vals){
+  const v=vals.filter(x=>x!=null);
+  if(v.length<2)return null;
+  const n=v.length;let sx=0,sy=0,sxy=0,sxx=0;
+  for(let i=0;i<n;i++){sx+=i;sy+=v[i];sxy+=i*v[i];sxx+=i*i;}
+  const d=n*sxx-sx*sx;if(!d)return null;
+  return (n*sxy-sx*sy)/d;
+}
+function stdev(vals){
+  const v=vals.filter(x=>x!=null);
+  if(v.length<2)return null;
+  const m=sum(v)/v.length;
+  return Math.sqrt(sum(v.map(x=>(x-m)*(x-m)))/(v.length-1));
+}
+/* 连续打卡：从今天（或昨天，避免刚过零点就断）向前数 */
+function streakDays(){
+  const set=new Set(DB.records.map(r=>r.date));
+  let cur=new Date(),n=0;
+  if(!set.has(ymd(cur)))cur=addDays(cur,-1);
+  while(set.has(ymd(cur))){n++;cur=addDays(cur,-1);}
+  return n;
+}
+function practiceDays(){return new Set(DB.records.map(r=>r.date)).size;}
+
+/* ---------- 卷面原始分折算（预估分数的唯一依据） ---------- */
+/* 出口 A：卷面比例等值  paper/100*710   （不含常模）
+   出口 B：常模折算      (paper-Mean)/SD*70+500                */
+function paperBreakdown(){
+  const days=DB.settings.paperRange||0;
+  const list=rangeRecs(days,null);
+  const detail=[], groups={listen:{got:0,full:0,rows:[]}, read:{got:0,full:0,rows:[]}};
+  for(const id in RAW){
+    const spec=RAW[id];
+    const rs=list.filter(r=>r.module===id);
+    const a=agg(rs);
+    const covered=a.rate!=null&&a.n>0;
+    const got=covered?a.rate/100*spec.full:0;
+    const row={id,name:modById(id).name,rate:a.rate,n:a.n,qty:spec.qty,per:spec.per,full:spec.full,
+               got:covered?got:null,covered};
+    groups[spec.group].rows.push(row);
+    if(covered){groups[spec.group].got+=got;groups[spec.group].full+=spec.full;}
+  }
+  const norm=g=>g.full>0?g.got/g.full*35:null;
+  const listen=norm(groups.listen), read=norm(groups.read);
+  /* 主观题：15 分制评分档自评，取累计得分率 */
+  const wAgg=agg(list.filter(r=>subtree('write').indexOf(r.module)>=0));
+  const tAgg=agg(list.filter(r=>subtree('trans').indexOf(r.module)>=0));
+  const write=wAgg.rate!=null?wAgg.rate/100*15:null;
+  const trans=tAgg.rate!=null?tAgg.rate/100*15:null;
+  const parts=[listen,read,write,trans].filter(v=>v!=null);
+  const total=sum(parts);
+  const covered=(listen!=null?1:0)+(read!=null?1:0)+(write!=null?1:0)+(trans!=null?1:0);
+  return {groups,listen,read,write,trans,total,covered,ready:covered>0,
+          ratio710:total/100*710};
+}
+function normScore(paper){
+  const p=NORMS[DB.settings.normParams];
+  return (paper-p.mean)/p.sd*70+500;
+}
+function normRange(paper){
+  return {lo:normScore2(paper,'conservative'), hi:normScore2(paper,'optimistic')};
+}
+function normScore2(paper,key){
+  const p=NORMS[key];return (paper-p.mean)/p.sd*70+500;
+}
+
+/* ---------- 弱项与提分 ---------- */
+function weakSpots(list){
+  const th=DB.settings.thresholds;
+  const mods=roots().filter(m=>m.type!=='vocab').map(m=>({m,a:modAgg(list,m.id)}))
+              .filter(x=>x.a.n>=th.module&&x.a.rate!=null).sort((a,b)=>a.a.rate-b.a.rate);
+  /* 细分题型：同时排除自身和父级是单词的 —— 只查 m.id 会漏掉「新词/复习」这类挂在单词下的子题型 */
+  const subs=DB.modules.filter(m=>m.parent&&m.type!=='vocab'&&modById(m.parent).type!=='vocab').map(m=>({m,a:modAgg(list,m.id)}))
+              .filter(x=>x.a.n>=th.subtype&&x.a.rate!=null).sort((a,b)=>a.a.rate-b.a.rate);
+  return {mod:mods[0]||null, sub:subs[0]||null, mods, subs};
+}
+/* 提分模拟：把最弱模块拉到它自己的目标线，重算整体正确率 */
+function simulate(list){
+  const w=weakSpots(list); if(!w.mod)return null;
+  const target=targetOf(w.mod.m.id);
+  const all=coreRecs(list); const base=agg(all);
+  if(!base.n)return null;
+  const others=sum(coreRecs(list).filter(r=>subtree(w.mod.m.id).indexOf(r.module)<0).map(r=>recStat(r).hit));
+  const after=(others+w.mod.a.n*target/100)/base.n*100;
+  return {mod:w.mod.m,sub:w.sub,base:base.rate,after,target,delta:after-base.rate};
+}
+/* 提分贡献：(目标率 − 当前率) × 模块分值（710 制权重） */
+function contributions(list){
+  return roots().filter(m=>m.type!=='vocab').map(m=>{
+    const a=modAgg(list,m.id);
+    const t=targetOf(m.id);
+    const gap=a.rate==null?0:Math.max(0,t-a.rate);
+    const paperGap=a.rate==null?0:(t-a.rate)/100*(m.id==='write'||m.id==='trans'?15:35);
+    return {m,a,t,gap,gain:gap*m.score/100,paperGap,delta710:paperGap*70/14};
+  }).sort((x,y)=>y.gain-x.gain);
+}
+
+/* ---------- 单词专区 ---------- */
+function vocabBreak(){
+  const news=DB.records.filter(r=>r.module==='word_new');
+  const revs=DB.records.filter(r=>r.module==='word_rev');
+  const na=agg(news), ra=agg(revs);
+  const passed=sum(news.map(r=>recStat(r).n));
+  const byBook={};
+  revs.forEach(r=>{const k=r.book||'未标记单元';(byBook[k]=byBook[k]||[]).push(r);});
+  const pool=[];
+  for(const k in byBook){
+    const rs=byBook[k].slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,2);
+    const a=agg(rs);
+    if(rs.length>=2&&a.rate!=null&&a.rate<DB.settings.reviewThreshold)
+      pool.push({book:k,rate:a.rate,n:a.n,last:rs[0].date});
+    else if(rs.length===1&&a.rate!=null&&a.rate<DB.settings.reviewThreshold-8)
+      pool.push({book:k,rate:a.rate,n:a.n,last:rs[0].date,warn:true});
+  }
+  pool.sort((a,b)=>a.rate-b.rate);
+  return {newAgg:na,revAgg:ra,passed,pool,news,revs};
+}
+/* 复习节奏：今天新学 / 4 天前学的 / 7 天前学的 */
+function reviewRhythm(){
+  const t=todayStr();
+  function on(back){const ds=ymd(addDays(new Date(),-back));return DB.records.filter(r=>r.date===ds&&r.module==='word_new');}
+  return [
+    {label:'今天新学的',rows:on(0)},
+    {label:'4 天前学的',rows:on(4)},
+    {label:'7 天前学的',rows:on(7)},
+  ];
+}
+
+/* ---------- 周报 ---------- */
+function weeklyReport(moduleId){
+  const ws=weeksSeries(2,moduleId);
+  const cur=ws[1], prev=ws[0];
+  if(!cur.recs.length)return '本周还没有记录。';
+  const parts=[];
+  const delta=cur.agg.rate!=null&&prev.agg.rate!=null?cur.agg.rate-prev.agg.rate:null;
+  parts.push('本周整体 '+pct(cur.agg.rate)+(delta==null?'':(delta>=0?'（↑ '+r2(delta)+' pt）':'（↓ '+r2(Math.abs(delta))+' pt）'))+'。');
+  const rows=roots().filter(m=>m.type!=='vocab').map(m=>{
+    const a=modAgg(cur.recs,m.id), b=modAgg(prev.recs,m.id);
+    return {m,a,b,d:a.rate!=null&&b.rate!=null?a.rate-b.rate:null};
+  }).filter(x=>x.a.rate!=null);
+  const moved=rows.filter(x=>x.d!=null&&Math.abs(x.d)>=1).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d)).slice(0,2);
+  if(moved.length)parts.push(moved.map(x=>x.m.short+(x.d>0?' +':' ')+r1(x.d)+'%').join('，')+'。');
+  else if(rows.length)parts.push(rows.map(x=>x.m.short+' 持平').join('，')+'。');
+  /* 最弱模块用本周自己的数据找（不套用 30 题门槛 —— 一周样本本来就小），
+     否则会出现"阅读 -1.4%"和"最弱是听力"并列的矛盾说法 */
+  const weekMods=roots().filter(x=>x.type!=='vocab').map(x=>({m:x,a:modAgg(cur.recs,x.id)}))
+    .filter(x=>x.a.rate!=null&&x.a.n>0).sort((x,y)=>x.a.rate-y.a.rate);
+  if(weekMods.length){
+    const w0=weekMods[0];
+    const thin=w0.a.n<DB.settings.thresholds.module?'（样本偏少，仅供参考）':'';
+    parts.push('本周最弱 '+w0.m.short+'（'+pct(w0.a.rate)+'，'+w0.a.n+' 题）'+thin+'。');
+  }
+  return parts.join('');
+}
+
+/* ---------- 演示数据 ---------- */
+function demoRecords(){
+  /* [往前第几天, 模块, 总数/满分, 正确/实得, 标签, 用时] —— 单词另附 book */
+  const A=[
+    [0,'listen_conv',21,16,'真题',25,'新闻错了 2 题'],
+    [0,'read_care',10,7,'真题',18,''],
+    [1,'listen_news',14,11,'真题',15,''],
+    [1,'write',15,11.5,'真题',35,'结构还行，词汇单一'],
+    [1,'trans',15,12,'真题',30,''],
+    [2,'read_match',10,8,'真题',20,''],
+    [2,'write',15,11,'真题',32,''],
+    [2,'word_rev',60,56,'复习',22,'', '四级核心 Unit 13'],
+    [3,'listen_pass',20,15,'真题',24,''],
+    [3,'read_word',10,6,'真题',16,'词性判断常错'],
+    [3,'trans',15,12,'真题',28,''],
+    [4,'listen_conv',8,6,'真题',12,''],
+    [4,'read_care',10,7,'真题',18,''],
+    [4,'write',15,12,'真题',33,''],
+    [5,'read_care',10,7,'真题',18,''],
+    [5,'listen_news',7,5,'真题',10,''],
+    [5,'trans',15,11,'真题',30,''],
+    [6,'listen_pass',20,16,'真题',24,''],
+    [6,'read_match',10,7,'真题',20,''],
+    [6,'write',15,11.5,'真题',34,''],
+    [7,'listen_conv',8,7,'专项',11,''],
+    [7,'read_word',10,7,'专项',15,''],
+    [8,'read_care',10,8,'真题',17,''],
+    [8,'trans',15,12.5,'真题',29,''],
+    [8,'listen_pass',20,16,'真题',24,''],
+    [9,'write',15,12,'真题',33,''],
+    [9,'read_match',10,8,'真题',19,''],
+    [9,'word_rev',60,50,'复习',22,'','四级核心 Unit 12'],
+    [10,'listen_news',7,6,'真题',10,''],
+    [10,'read_word',10,5,'真题',15,''],
+    [11,'read_care',10,7,'真题',18,''],
+    [11,'trans',15,11.5,'真题',29,''],
+    [12,'listen_conv',8,6,'模拟',12,''],
+    [12,'write',15,11,'模拟',32,''],
+    [13,'read_match',10,8,'真题',19,''],
+    [13,'listen_pass',20,15,'真题',25,''],
+    [14,'read_care',10,7,'真题',18,''],
+    [14,'trans',15,12,'真题',29,''],
+    [15,'listen_news',7,5,'真题',10,''],
+    [15,'read_word',10,6,'真题',16,''],
+    [16,'write',15,11.5,'真题',33,''],
+    [16,'listen_conv',8,6,'真题',12,''],
+    [18,'read_care',10,7,'真题',18,''],
+    [18,'read_match',10,7,'真题',19,''],
+    [19,'listen_pass',20,14,'真题',24,''],
+    [19,'trans',15,11,'真题',30,''],
+    [20,'read_word',10,7,'真题',16,''],
+    [20,'write',15,12,'真题',33,''],
+    [20,'word_rev',60,49,'复习',21,'','四级核心 Unit 12'],
+    [22,'listen_conv',8,6,'真题',12,''],
+    [22,'read_care',10,6,'真题',18,''],
+    [23,'read_match',10,7,'真题',19,''],
+    [23,'listen_news',7,5,'真题',11,''],
+    [24,'write',15,11,'真题',32,''],
+    [24,'trans',15,11.5,'真题',29,''],
+    [25,'listen_pass',20,14,'真题',24,''],
+    [25,'read_word',10,5,'真题',15,''],
+    [26,'read_care',10,7,'真题',18,''],
+    [27,'listen_conv',8,5,'真题',11,''],
+    [27,'write',15,10.5,'真题',31,''],
+    [29,'read_match',10,7,'真题',19,''],
+    [29,'listen_news',7,6,'真题',10,''],
+    [30,'read_care',10,6,'真题',18,''],
+    [30,'trans',15,11,'真题',30,''],
+    [31,'listen_pass',20,15,'真题',25,''],
+    [32,'read_word',10,6,'真题',16,''],
+    [32,'write',15,11,'真题',32,''],
+    [33,'listen_conv',8,6,'真题',12,''],
+    [34,'read_care',10,8,'真题',17,''],
+    [34,'listen_news',7,5,'真题',10,''],
+    [34,'word_rev',50,42,'复习',19,'','四级核心 Unit 04'],
+    [36,'read_match',10,6,'真题',19,''],
+    [36,'write',15,10.5,'真题',31,''],
+    [37,'listen_pass',20,14,'真题',24,''],
+    [37,'trans',15,10.5,'真题',29,''],
+    [38,'read_care',10,6,'真题',18,''],
+    [39,'read_word',10,5,'真题',15,''],
+    [39,'listen_conv',8,5,'真题',11,''],
+    [40,'read_care',10,7,'真题',18,''],
+    [40,'listen_news',7,5,'真题',10,''],
+  ];
+  const NEWW=[1,3,5,7,9,11,13,15,17,19];
+  const NEWC=[25,24,26,23,25,27,24,22,25,26];
+  const out=[];let k=0;
+  const stamp=Date.now();
+  function mk(back,mod,total,correct,tag,dur,note,book){
+    const dt=ymd(addDays(new Date(),-back));
+    /* 注意：这里不能用 modById() —— demoRecords 在 DB 赋值之前就被调用，那时 DB 还不存在 */
+    const m=MODULES.find(x=>x.id===mod);
+    const sub=m&&m.mode==='subjective';
+    const r={id:'r_'+stamp+'_'+p2(k%100)+k,date:dt,module:mod,
+      mode:sub?'subjective':'objective',tag:tag||null,duration:dur||null,note:note||'',
+      createdAt:stamp-k*60000};
+    if(sub){r.fullScore=total;r.gotScore=correct;}else{r.total=total;r.correct=correct;}
+    if(book)r.book=book;
+    k++;return r;
+  }
+  A.forEach(a=>out.push(mk(a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7])));
+  NEWW.forEach((back,i)=>out.push(mk(back,'word_new',40,NEWC[i],'专项',25,'','四级核心 Unit '+(14-i))));
+  return out;
+}
+function loadStore(){
+  let raw=null;
+  try{raw=JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(e){raw=null;}
+  if(raw&&raw.records&&raw.records.length){
+    DB={
+      modules:(raw.modules&&raw.modules.length)?raw.modules:MODULES.slice(),
+      records:raw.records,
+      settings:Object.assign({},DEFAULT_SETTINGS,raw.settings||{}),
+    };
+    DB.settings.targets=Object.assign({},DEFAULT_SETTINGS.targets,(raw.settings&&raw.settings.targets)||{});
+    DB.settings.targets.byModule=Object.assign({},DEFAULT_SETTINGS.targets.byModule,(raw.settings&&raw.settings.targets&&raw.settings.targets.byModule)||{});
+    DB.settings.thresholds=Object.assign({},DEFAULT_SETTINGS.thresholds,(raw.settings&&raw.settings.thresholds)||{});
+    DB.settings.goals=Object.assign({},DEFAULT_SETTINGS.goals,(raw.settings&&raw.settings.goals)||{});
+    DB.settings._demo=false;
+  }else{
+    DB={modules:MODULES.slice(),records:demoRecords(),settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS))};
+    DB.settings._demo=true;
+  }
+  if(!DB.settings.milestones)DB.settings.milestones=[];
+  /* 清理：曾短暂加过的「听写」独立模块已撤销，从旧 localStorage 里移除 */
+  DB.modules=DB.modules.filter(m=>m.id!=='dict');
+  DB.records=DB.records.filter(r=>r.module!=='dict');
+  saveStore();
+}
+function saveStore(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify({modules:DB.modules,records:DB.records,settings:DB.settings}));}catch(e){}
+}
+function clearDemo(){
+  DB.records=[];DB.settings._demo=false;resetMilestones();saveStore();
+}
+/* 清空数据时连里程碑标记一起复位，否则清完再加题永远不会再庆祝 */
+function resetMilestones(){(DB.settings.milestones||[]).forEach(m=>{delete DB.settings['_hit'+m];});}
+function applyTheme(t){
+  /* 跟随系统已移除：主题只有浅色 / 深色两档，跟随记忆走 */
+  if(!t||(t==='system'))t='light';
+  document.documentElement.setAttribute('data-theme',t);
+  DB.settings.theme=t;
+  try{localStorage.setItem(LS_THEME,t);}catch(e){}
+}
+/* ============================================================
+   JS_CHART —— 全部手绘 SVG，零依赖
+   ============================================================ */
+const CX={pink:'#FF6B9D',pink2:'#FFA5C0',ok:'#34C99A',amber:'#F5A623',danger:'#F2647C',
+          vocab:'#C77DFF',vocab2:'#E0BBFF'};
+
+function ringSVG(val,size,color,tcolor,sw,goal){
+  const W=sw||5;
+  const r=size/2-W/2-2, c=2*Math.PI*r, p=val==null?0:clamp(val,0,100)/100;
+  const m=size/2;
+  /* 目标线刻度：从 12 点钟方向顺时针转 goal% 的一根径向短线，跨在环带上 */
+  let tick='';
+  if(goal!=null&&goal>0&&goal<100){
+    tick='<line x1="'+m+'" y1="'+(m-r-W/2-4).toFixed(1)+'" x2="'+m+'" y2="'+(m-r+W/2+4).toFixed(1)+'"'
+      +' stroke="var(--ink-2)" stroke-width="2.5" stroke-linecap="round"'
+      +' transform="rotate('+(goal*3.6).toFixed(1)+' '+m+' '+m+')"/>';
+  }
+  return '<svg class="ring" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'
+    +'<circle cx="'+m+'" cy="'+m+'" r="'+r+'" fill="none" style="stroke:var(--track)" stroke-width="'+W+'"/>'
+    +'<circle class="arc" cx="'+m+'" cy="'+m+'" r="'+r+'" fill="none" style="stroke:'+color+'" stroke-width="'+W+'"'
+    +' stroke-linecap="round" stroke-dasharray="'+(c*p).toFixed(2)+' '+c.toFixed(2)+'"'
+    +' transform="rotate(-90 '+m+' '+m+')"/>'
+    +tick+'</svg>';
+}
+
+/* 取刻度序号：n 个点里均匀挑 max 个（含首末） */
+function tickIdx(n,max){
+  if(n<=max)return Array.from({length:n},(_,i)=>i);
+  const out=[];
+  for(let i=0;i<max;i++)out.push(Math.round(i*(n-1)/(max-1)));
+  return Array.from(new Set(out));
+}
+/* 顶部取整到 5 的倍数，并保证目标线落在范围内 */
+function niceRange(vals,goal){
+  const all=vals.filter(v=>v!=null).concat(goal!=null?[goal]:[]);
+  if(!all.length)return {lo:60,hi:100};
+  let lo=Math.min.apply(null,all), hi=Math.max.apply(null,all);
+  const pad=Math.max(2.5,(hi-lo)*0.28);
+  lo=Math.floor((lo-pad)/5)*5; hi=Math.ceil((hi+pad)/5)*5;
+  if(hi-lo<10){hi=lo+10;}
+  return {lo:clamp(lo,0,100),hi:clamp(hi,0,100)};
+}
+
+/* ---------- 折线趋势图（周 / 日共用一套坐标系） ---------- */
+function chartTrend(w,h){
+  const mode=ST.range.trend, mod=ST.openMod;
+  const goal=mod?targetOf(mod):DB.settings.targets.objective;
+  let slots=[], holes=0, rangeDays=0;
+  if(mode==='week'){
+    /* 周档：0 题的周保留占位（x 轴间距不失真、标签照常），折线在缺口处断开。
+       ⚠️ 不能把 null 直接塞进点列 —— Y(null) 会按数值 0 算，坐标落到图表区外，
+       线会从卡片底部扎出去（2026-10-01 修的"折线超出画面"就是这个）。 */
+    slots=weeksSeries(6,mod).map(x=>({label:fmtDate(x.start)+'周',value:x.agg.rate,n:x.agg.n}));
+    holes=slots.filter(p=>p.value==null).length;
+  }else{
+    const n=ST.range.day; rangeDays=n;
+    const ds=daysSeries(n,mod);
+    holes=ds.filter(x=>x.agg.rate==null).length;
+    slots=ds.filter(x=>x.agg.rate!=null).map(x=>({label:fmtDate(x.date),value:x.agg.rate,n:x.agg.n,date:x.date}));
+  }
+  const drawn=[];slots.forEach((p,i)=>{if(p.value!=null)drawn.push({p,i});});
+  if(!drawn.length)
+    return '<div class="empty">这个范围内还没有记录 —— 在右侧记一笔，曲线就会出现</div>';
+
+  const padL=44,padR=18,padT=34,padB=40;
+  const pw=Math.max(60,w-padL-padR), ph=Math.max(60,h-padT-padB);
+  const {lo,hi}=niceRange(drawn.map(d=>d.p.value),goal);
+  const X=i=>padL+(slots.length===1?pw/2:i*pw/(slots.length-1));
+  const Y=v=>padT+(hi-v)/(hi-lo)*ph;
+
+  let s='<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" fill="none">';
+  /* 网格 + Y 轴刻度 */
+  const steps=4;
+  for(let i=0;i<=steps;i++){
+    const v=hi-(hi-lo)*i/steps, y=Y(v);
+    s+='<line class="g-soft" x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke-width="1"/>';
+    s+='<text class="t-ink4" x="'+(padL-9)+'" y="'+(y+3.4).toFixed(1)+'" font-size="9" text-anchor="end" font-family="Inter">'+Math.round(v)+'%</text>';
+  }
+  /* 目标虚线：标签放右端、线的下方 —— 上方是值标签区（最高/末点都标在点上方），放上面必撞 */
+  if(goal!=null&&goal>=lo&&goal<=hi){
+    const gy=Y(goal);
+    s+='<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+gy.toFixed(1)+'" stroke="'+CX.pink2+'" stroke-width="1.6" stroke-dasharray="6 5"/>';
+    s+='<text x="'+(w-padR)+'" y="'+(gy+14).toFixed(1)+'" font-size="9.5" fill="'+CX.pink2+'" text-anchor="end" font-family="Inter">目标 '+goal+'%</text>';
+  }
+  /* 面积 + 折线：按"连续有数据"的段画，缺口处断开；每段各自封底成面积 */
+  const runs=[];let cur=[drawn[0]];
+  for(let k=1;k<drawn.length;k++){
+    if(drawn[k].i===cur[cur.length-1].i+1)cur.push(drawn[k]);
+    else{runs.push(cur);cur=[drawn[k]];}
+  }
+  runs.push(cur);
+  runs.forEach(run=>{
+    const line=run.map(d=>X(d.i).toFixed(1)+','+Y(d.p.value).toFixed(1)).join(' ');
+    if(run.length>1){
+      const area=line+' '+X(run[run.length-1].i).toFixed(1)+','+(padT+ph)+' '+X(run[0].i).toFixed(1)+','+(padT+ph);
+      s+='<polygon class="spark-area" points="'+area+'" fill="rgba(255,107,157,.10)"/>';
+    }
+    s+='<polyline class="spark-path" pathLength="1" points="'+line+'" stroke="'+CX.pink+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  });
+  /* 关键点：最高 / 最低 / 末点（只在有数据的点里找，null 不参与比较） */
+  let iMax=0,iMin=0;
+  drawn.forEach((d,k)=>{if(d.p.value>drawn[iMax].p.value)iMax=k;if(d.p.value<drawn[iMin].p.value)iMin=k;});
+  const lastK=drawn.length-1;
+  const keys={};
+  keys[iMax]='max'; keys[iMin]='min'; keys[lastK]='last';
+  if(lastK===iMax&&iMin!==lastK)delete keys[iMax];
+  if(lastK===iMin&&iMax!==lastK)delete keys[iMin];
+  drawn.forEach((d,k)=>{
+    const x=X(d.i),y=Y(d.p.value),kk=keys[k];
+    const col=kk==='max'?CX.ok:(kk==='min'?CX.danger:CX.pink);
+    const rad=kk==='last'?5:3.4;
+    s+='<circle class="pt" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+rad+'" fill="'+(kk==='last'?'#E04B84':col)+'" style="animation-delay:'+(0.35+k*0.035).toFixed(2)+'s"/>';
+    if(kk){
+      const txt=pct1(d.p.value), tw=txt.length*6.4+8;
+      /* 值标签必须垫一块与卡底同色的底，让折线在标签处断开 —— 否则压线看不清 */
+      let tx=clamp(x-tw/2,padL-2,w-padR-tw+2), ty=y-26;
+      if(ty<padT-6)ty=y+16;
+      s+='<rect x="'+tx.toFixed(1)+'" y="'+(ty-11).toFixed(1)+'" width="'+tw.toFixed(1)+'" height="16" rx="4" style="fill:var(--surface)"/>';
+      s+='<text class="pt" x="'+(tx+tw/2).toFixed(1)+'" y="'+(ty+1).toFixed(1)+'" font-size="11" font-weight="600" fill="'+col+'" text-anchor="middle" font-family="Inter" style="animation-delay:'+(0.5+k*0.035).toFixed(2)+'s">'+txt+'</text>';
+    }
+  });
+  /* X 轴标签：周档全部槽位都标（0 题的周也显示），日档按密度抽稀 */
+  const labN=mode==='week'?slots.length:(slots.length<=8?slots.length:(ST.range.day>14?5:4));
+  tickIdx(slots.length,labN).forEach(i=>{
+    s+='<text class="t-ink4" x="'+X(i).toFixed(1)+'" y="'+(h-14)+'" font-size="9.5" text-anchor="middle" font-family="Inter">'+slots[i].label+'</text>';
+    if(slots.length<=8&&slots[i].n!=null)
+      s+='<text class="t-ink4" x="'+X(i).toFixed(1)+'" y="'+(h-3)+'" font-size="8.5" text-anchor="middle" font-family="Inter" opacity=".8">'+slots[i].n+' 题</text>';
+  });
+  s+='</svg>';
+  /* 日档摘要 */
+  if(mode==='day'){
+    const vals=drawn.map(d=>d.p.value);
+    const mean=sum(vals)/vals.length;
+    const bMax=drawn[iMax].p,bMin=drawn[iMin].p;
+    s+='<div class="hint" style="margin-top:10px;flex-direction:column;align-items:flex-start;gap:3px">'
+      +'<div style="font-weight:600">近 '+rangeDays+' 天 · '+drawn.length+' 天有记录 · '+holes+' 天未练</div>'
+      +'<div class="num">均值 '+pct(mean)+'　最好 '+pct(bMax.value)+'（'+bMax.date.slice(5)+'）　最差 '+pct(bMin.value)+'（'+bMin.date.slice(5)+'）</div>'
+      +'</div>';
+  }
+  return s;
+}
+/* 模块目标线：模块自己的目标 → 没设则按性质回落到客观题/主观题目标。
+   ⚠️ 不再用 targets.overall 兜底 —— 那是已删除的旧「整体目标」设置遗留的隐藏值，
+   用户改不了它，曾经出现过"目标线画在 86% 但目标其实是 73%"的困惑。 */
+function targetOf(id){
+  const m=modById(id);
+  if(!m)return DB.settings.targets.objective;
+  if(DB.settings.targets.byModule[id]!=null)return DB.settings.targets.byModule[id];
+  return isSubjective(id)?DB.settings.targets.subjective:DB.settings.targets.objective;
+}
+
+/* ---------- 正确率 × 题量 双轴图 ---------- */
+function chartDual(w,h){
+  const ws=weeksSeries(8,ST.openMod);
+  const has=ws.some(x=>x.agg.n>0);
+  if(!has)return '<div class="empty">还没有足够的周数据</div>';
+  const padL=44,padR=44,padT=26,padB=36;
+  const pw=Math.max(60,w-padL-padR), ph=Math.max(50,h-padT-padB);
+  const rVals=ws.map(x=>x.agg.rate).filter(v=>v!=null);
+  const nVals=ws.map(x=>x.agg.n);
+  const {lo,hi}=niceRange(rVals,null);
+  const nMax=Math.max(20,Math.ceil(Math.max.apply(null,nVals)/50)*50);
+  const bw=Math.min(30,pw/ws.length*0.52);
+  const X=i=>padL+(i+0.5)*pw/ws.length;
+  const Y=v=>padT+(hi-v)/(hi-lo)*ph;
+  const NY=v=>padT+ph-(v/nMax)*ph;
+  let s='<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" fill="none">';
+  for(let i=0;i<=4;i++){
+    const v=hi-(hi-lo)*i/4,y=Y(v);
+    s+='<line class="g-soft" x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke-width="1"/>';
+    s+='<text class="t-ink4" x="'+(padL-8)+'" y="'+(y+3.4).toFixed(1)+'" font-size="9" text-anchor="end" font-family="Inter">'+Math.round(v)+'%</text>';
+    s+='<text class="t-ink4" x="'+(w-padR+8)+'" y="'+(y+3.4).toFixed(1)+'" font-size="9" font-family="Inter">'+Math.round(nMax*(1-i/4))+'</text>';
+  }
+  ws.forEach((x,i)=>{
+    if(x.agg.n>0){
+      const y=NY(x.agg.n);
+      s+='<rect class="bar-g" x="'+(X(i)-bw/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(padT+ph-y).toFixed(1)+'" rx="4" fill="'+CX.pink+'" opacity=".24" style="animation-delay:'+(i*0.045).toFixed(2)+'s"/>';
+    }
+    s+='<text class="t-ink4" x="'+X(i).toFixed(1)+'" y="'+(h-14)+'" font-size="9" text-anchor="middle" font-family="Inter">'+fmtDate(x.start)+'周</text>';
+  });
+  const lp=[];
+  ws.forEach((x,i)=>{if(x.agg.rate!=null)lp.push({i,v:x.agg.rate});});
+  if(lp.length>1){
+    s+='<polyline class="spark-path" pathLength="1" points="'+lp.map(p=>X(p.i).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ')+'" stroke="'+CX.pink+'" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  lp.forEach((p,k)=>{
+    s+='<circle class="pt" cx="'+X(p.i).toFixed(1)+'" cy="'+Y(p.v).toFixed(1)+'" r="'+(k===lp.length-1?4.5:3)+'" fill="'+(k===lp.length-1?'#E04B84':CX.pink)+'" style="animation-delay:'+(0.35+k*0.05).toFixed(2)+'s"/>';
+  });
+  s+='</svg>';
+  s+='<div class="legend" style="margin-top:8px"><span><i style="background:'+CX.pink+';opacity:.24"></i>当周题量（右轴）</span><span><i style="background:'+CX.pink+'"></i>当周正确率（左轴）</span></div>';
+  return s;
+}
+
+/* ---------- 单词：每日过词量（新词 / 复习 叠柱） ---------- */
+function chartDailyWords(w,h){
+  const n=14, out=[];
+  for(let i=n-1;i>=0;i--){
+    const ds=ymd(addDays(new Date(),-i));
+    const nw=DB.records.filter(r=>r.date===ds&&r.module==='word_new');
+    const rv=DB.records.filter(r=>r.date===ds&&r.module==='word_rev');
+    out.push({date:ds,newN:sum(nw.map(r=>recStat(r).n)),revN:sum(rv.map(r=>recStat(r).n))});
+  }
+  if(!out.some(x=>x.newN+x.revN>0))return '<div class="empty">这 14 天还没有背单词记录</div>';
+  const padL=34,padR=12,padT=20,padB=32;
+  const pw=Math.max(60,w-padL-padR), ph=Math.max(40,h-padT-padB);
+  const hi=Math.max(40,Math.ceil(Math.max.apply(null,out.map(x=>x.newN+x.revN))/40)*40);
+  const slot=pw/out.length, bw=Math.min(22,slot*0.56);
+  let s='<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" fill="none">';
+  /* Y 轴网格 + 刻度：只有顶端一个数没有量纲参照 */
+  for(let i=0;i<=2;i++){
+    const v=hi*(1-i/2),y=padT+(i/2)*ph;
+    s+='<line class="g-soft" x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+y.toFixed(1)+'" stroke-width="1"/>';
+    s+='<text class="t-ink4" x="'+(padL-8)+'" y="'+(y+3.4).toFixed(1)+'" font-size="9" text-anchor="end" font-family="Inter">'+Math.round(v)+'</text>';
+  }
+  s+='<line class="g-line" x1="'+padL+'" y1="'+(padT+ph)+'" x2="'+(w-padR)+'" y2="'+(padT+ph)+'" stroke-width="1"/>';
+  out.forEach((d,i)=>{
+    const cx=padL+(i+0.5)*slot;
+    const tot=d.newN+d.revN;
+    if(!tot){s+='<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+(padT+ph-3)+'" width="'+bw.toFixed(1)+'" height="3" rx="1.5" style="fill:var(--line-3)"/>';return;}
+    const totH=tot/hi*ph, newH=d.newN/hi*ph;
+    s+='<rect class="bar-g" x="'+(cx-bw/2).toFixed(1)+'" y="'+(padT+ph-totH).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+totH.toFixed(1)+'" rx="3" fill="'+CX.pink2+'" opacity=".55" style="animation-delay:'+(i*0.03).toFixed(2)+'s"/>';
+    if(d.newN)
+      s+='<rect class="bar-g" x="'+(cx-bw/2).toFixed(1)+'" y="'+(padT+ph-totH).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+newH.toFixed(1)+'" rx="3" fill="'+CX.vocab+'" style="animation-delay:'+(0.1+i*0.03).toFixed(2)+'s"/>';
+  });
+  [0,Math.floor(out.length/2),out.length-1].forEach(i=>{
+    s+='<text class="t-ink4" x="'+(padL+(i+0.5)*slot).toFixed(1)+'" y="'+(h-12)+'" font-size="9.5" text-anchor="middle" font-family="Inter">'+fmtDate(out[i].date)+'</text>';
+  });
+  s+='</svg>';
+  s+='<div class="legend" style="margin-top:8px"><span><i style="background:'+CX.vocab+'"></i>当日新词</span><span><i style="background:'+CX.pink2+';opacity:.55"></i>当日合计（新词 + 复习）</span></div>';
+  return s;
+}
+
+/* ============================================================
+   图表绘制调度
+   ============================================================ */
+/* 条形旧状态抓拍：render() 重建 DOM 前记录每根带 data-key 条形的宽度/颜色，
+   paintCharts 里用 WAAPI 从旧值显式补间到新值 —— 切档/下钻时条是"长过去/缩回来+变色"，
+   且不依赖旧值先被渲染一帧（那在重建场景不可靠：旧值根本没进过样式计算）。 */
+let BAR_OLD={};
+function paintCharts(){
+  $$('[data-chart]').forEach(el=>{
+    const w=Math.max(220,Math.round(el.clientWidth||el.parentElement.clientWidth||620));
+    const h=+el.dataset.h||240;
+    const k=el.dataset.chart;
+    try{
+      if(k==='trend')el.innerHTML=chartTrend(w,h);
+      else if(k==='dual')el.innerHTML=chartDual(w,h);
+      else if(k==='dwords')el.innerHTML=chartDailyWords(w,h);
+    }catch(err){el.innerHTML='<div class="empty">图表渲染失败：'+esc(err.message)+'</div>';}
+  });
+  /* 条形过渡：带 data-key 的条从抓拍的旧状态做 WAAPI 补间（宽度 + 颜色）；
+     没有旧状态时维持原逻辑（quiet 直接落终值，首次从 0 长出来）。 */
+  const quiet=document.body.classList.contains('quiet');
+  const noMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const oldBars=BAR_OLD; BAR_OLD={};
+  $$('.bar-fill').forEach(el=>{
+    const tw=+el.dataset.w||0;
+    const key=el.dataset.key||'';
+    const old=key?oldBars[key]:null;
+    if(old){
+      const toBg=getComputedStyle(el).backgroundColor;
+      /* 先无过渡落位再强制回流：否则"样式表 width:0 → 内联 tw"会触发一条从 0 起的
+         CSS transition（数据没变时没有 WAAPI 盖住它，条就会从 0 重播一遍） */
+      el.style.transition='none';
+      el.style.width=tw+'%';
+      if(!noMotion&&(Math.abs(old.w-tw)>0.05||old.bg!==toBg)){
+        getComputedStyle(el).backgroundColor; /* 回流，钉住无过渡落位 */
+        el.style.transition='';
+        el.animate(
+          [{width:old.w+'%',backgroundColor:old.bg},{width:tw+'%',backgroundColor:toBg}],
+          {duration:850,easing:'cubic-bezier(.22,.61,.36,1)'});
+      }else{
+        void el.offsetWidth;
+        el.style.transition='';
+      }
+    }else if(quiet){
+      el.style.transition='none';el.style.width=tw+'%';void el.offsetWidth;el.style.transition='';
+    }else{
+      el.style.width='0%';void el.offsetWidth;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.width=tw+'%';}));
+    }
+  });
+  /* 页签滑块与分段器滑块 */
+  layoutTabs(); sizeSegs();
+}
+let _ro=null,_rt=null;
+function observeCharts(){
+  if(!window.ResizeObserver)return;
+  if(!_ro)_ro=new ResizeObserver(()=>{clearTimeout(_rt);_rt=setTimeout(paintCharts,120);});
+  _ro.disconnect();
+  $$('[data-chart]').forEach(el=>_ro.observe(el));
+}
+
+/* 分段器滑块：在长条上滑过去，而不是每块自己变色。
+   布局期一律「无过渡落位」—— 重建 DOM 后从 0 滑过去就是"别的滑块原地动一下"的根源；
+   动画只在点击时由事件层显式驱动（记旧位置 → 重建 → 从旧位置滑到新位置）。 */
+function sizeSegs(){
+  $$('.seg').forEach(seg=>{
+    let th=seg.querySelector('.seg-thumb');
+    const on=seg.querySelector('button.on');
+    if(!on){if(th)th.hidden=true;return;}
+    if(!th){th=document.createElement('i');th.className='seg-thumb';seg.insertBefore(th,seg.firstChild);}
+    th.hidden=false;
+    th.style.transition='none';
+    th.style.transform='translateX('+on.offsetLeft+'px)';
+    th.style.width=on.offsetWidth+'px';
+    void th.offsetWidth;
+    th.style.transition='';
+  });
+}
+function layoutTabs(){
+  const box=$('#tabs'); if(!box)return;
+  let th=box.querySelector('.tab-thumb'); if(!th)return;
+  const on=box.querySelector('.tab.on');
+  if(!on){th.hidden=true;return;}
+  th.hidden=false;
+  th.style.transition='none';
+  th.style.transform='translateX('+on.offsetLeft+'px)';
+  th.style.width=on.offsetWidth+'px';
+  void th.offsetWidth;
+  th.style.transition='';
+}
+/* 点击后驱动一次真正的滑动：fromX/fromW 是重建前滑块的位置。
+   过渡写在**内联样式**上 —— body.quiet 的样式表规则禁不掉内联，否则小操作下动画全部消失 */
+function slideThumb(th,on,fromX,fromW){
+  if(!th||!on)return;
+  th.hidden=false;
+  th.style.transition='none';
+  th.style.transform=fromX;
+  th.style.width=fromW;
+  void th.offsetWidth;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+    th.style.transition='none';
+    th.style.transform='translateX('+on.offsetLeft+'px)';
+    th.style.width=on.offsetWidth+'px';
+    th.style.transition='';
+    return;
+  }
+  th.style.transition='transform .3s cubic-bezier(.4,0,.2,1),width .3s cubic-bezier(.4,0,.2,1)';
+  th.style.transform='translateX('+on.offsetLeft+'px)';
+  th.style.width=on.offsetWidth+'px';
+  clearTimeout(th.__st);
+  th.__st=setTimeout(()=>{th.style.transition='';},340);
+}
+/* ============================================================
+   视图：总览
+   ============================================================ */
+function vOverview(){
+  const core=coreRecs(DB.records);
+  /* 客观题（听力+阅读的选择题）与主观题（写作+翻译）分开统计、分开设目标 */
+  const objAgg=agg(core.filter(r=>!isSubjective(r.module)));
+  const subj=agg(DB.records.filter(r=>isSubjective(r.module)&&!isVocab(r.module)));
+  const objGoal=DB.settings.targets.objective, subjGoal=DB.settings.targets.subjective;
+  const objDiff=objAgg.rate!=null?objAgg.rate-objGoal:null;
+  const subjDiff=subj.rate!=null?subj.rate-subjGoal:null;
+  const d7=agg(core.filter(r=>dayDiff(r.date,todayStr())<7));
+  const d14=agg(core.filter(r=>{const b=dayDiff(r.date,todayStr());return b>=7&&b<14;}));
+  const mom=d7.rate!=null&&d14.rate!=null?d7.rate-d14.rate:null;
+  const dates=DB.records.map(r=>r.date).sort();
+  const list=rangeRecs(ST.range.mod,null).filter(r=>!isVocab(r.module));
+  const paper=paperBreakdown();
+  const w=weakSpots(list);
+  const sim=simulate(list);
+  const contribs=contributions(list);
+
+  /* KPI 区：两张大环卡（客观题 / 主观题）+ 右侧 2×2 小卡 */
+  const st=streakDays(),todayRecs=DB.records.filter(r=>r.date===todayStr());
+  const mini=(lab,val,sub,col)=>'<div class="kmini"><span class="klab">'+lab+'</span>'
+    +'<span class="kval num" style="color:'+(col||'var(--ink)')+'">'+val+'</span>'
+    +'<span class="ksub">'+sub+'</span></div>';
+  let kpis='<div class="krow">';
+  kpis+='<div class="kbig" data-guide="kpi-obj">'
+    +'<div class="kb-top"><span>客观题正确率</span><span class="num">目标 '+objGoal+'%</span></div>'
+    +'<div class="kb-ring">'+ringSVG(objAgg.rate,148,colorHex(objAgg.rate),null,12,objGoal)
+      +'<div class="kb-in"><span class="kb-val num" style="color:'+(objAgg.rate==null?'var(--ink-4)':colorHex(objAgg.rate))+'">'+pct(objAgg.rate)+'</span>'
+      +'<span class="kb-sub num">累计 '+objAgg.n+' 题</span></div></div>'
+    +'<div class="kb-foot">听力 + 阅读 · '+(objDiff==null?'暂无目标对比':(objDiff>=0?'超出目标 ':'距目标还差 ')+r1(Math.abs(objDiff))+' pt')+'</div>'
+    +'</div>';
+  kpis+='<div class="kbig">'
+    +'<div class="kb-top"><span>主观题得分率</span><span class="num">目标 '+subjGoal+'%</span></div>'
+    +'<div class="kb-ring">'+ringSVG(subj.rate,148,subj.rate==null?'var(--track)':colorHex(subj.rate),null,12,subjGoal)
+      +'<div class="kb-in"><span class="kb-val num" style="color:'+(subj.rate==null?'var(--ink-4)':colorHex(subj.rate))+'">'+(subj.rate==null?'—':pct(subj.rate))+'</span>'
+      +'<span class="kb-sub num">'+(subj.rate==null?'暂无':'写作 + 翻译')+'</span></div></div>'
+    +'<div class="kb-foot">'+(subjDiff==null?'还没有主观题记录 · 评分档自评 15 分制':(subjDiff>=0?'超出目标 ':'距目标还差 ')+r1(Math.abs(subjDiff))+' pt · 评分档自评 15 分制')+'</div>'
+    +'</div>';
+  kpis+='<div class="kgrid">'
+    +mini('连续打卡天数',st+' 天',(todayRecs.length?'今天已记 · ':'今天还没记 · ')+'本周 '+DB.records.filter(r=>dayDiff(r.date,todayStr())<7).length+' 条')
+    +mini('近 7 天正确率',pct(d7.rate),mom==null?'暂无环比数据':'环比上周 '+(mom>=0?'↑ ':'↓ ')+r1(Math.abs(mom))+' pt',colorHex(d7.rate))
+    +mini('累计记录条数',DB.records.length+' 条','本周新增 '+DB.records.filter(r=>dayDiff(r.date,todayStr())<7).length+' 条')
+    +mini('累计练习天数',practiceDays()+' 天',dates.length?'最早 '+dates[0]:'还没有记录')
+    +'</div>';
+  kpis+='</div>';
+
+  /* 模块正确率对比：照 GK —— 全模块平铺，0 题也显示；四列严格对齐 */
+  const mods=roots().filter(m=>m.type!=='vocab').map(m=>{
+    const a=modAgg(list,m.id);
+    return {m,a,target:targetOf(m.id)};
+  }).sort((a,b)=>(b.a.rate==null?-1:b.a.rate)-(a.a.rate==null?-1:a.a.rate));
+  const leafN=sum(list.filter(r=>isSub(r.module)).map(r=>recStat(r).n));
+  const allN=sum(list.map(r=>recStat(r).n));
+  let bars='<div class="mrows">';
+  if(!list.length)bars+='<div class="empty">这个范围内还没有记录</div>';
+  mods.forEach(x=>{
+    const hit=x.a.rate!=null&&x.a.rate>=x.target;
+    const col=x.a.rate==null?'var(--ink-4)':colorHex(x.a.rate);
+    bars+='<div class="mrow">'
+      +'<div class="mname"><span class="dot rd" style="background:'+x.m.color+'"></span>'+esc(x.m.name)
+        +(x.a.rate!=null&&!hit?'<span class="pill" style="background:'+x.m.color+';border-color:'+x.m.color+';color:#fff">弱项</span>':'')+'</div>'
+      +'<div class="bar-track"><div class="bar-fill" data-key="ov-'+x.m.id+'" data-w="'+r1(x.a.rate)+'" style="background:'+(x.a.rate==null?'transparent':col)+'"></div>'
+        +'<div class="bar-goal" style="left:'+x.target+'%"></div></div>'
+      +'<span class="mcount num">'+x.a.n+' 题</span>'
+      +'<span class="mrate num" style="color:'+col+'">'+(x.a.rate==null?'—':pct(x.a.rate))+'</span>'
+      +'</div>';
+  });
+  bars+='</div>';
+
+  /* 预估分数卡（常模折算） */
+  const core612=normScore(paper.total), rng=normRange(paper.total);
+  const passDiff=core612-DB.settings.passLine;
+  const estCard='<div class="card" data-guide="est" style="flex:1">'
+    +'<div class="chead" style="margin-bottom:10px">'
+      +'<div class="hl"><h3>预估总分 · 710 制</h3></div>'
+      +'<span class="pill rose">常模折算</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:7px;margin-top:2px">'
+      +'<span class="num" style="font-size:42px;font-weight:700;line-height:1.1;letter-spacing:-1px">'+Math.round(core612)+'</span>'
+      +'<span style="font-size:12px;color:var(--ink-3)">分</span></div>'
+    +'<div class="num" style="font-size:10.5px;color:var(--ink-3);margin-top:12px">波动区间 '+Math.round(rng.lo)+' ~ '+Math.round(rng.hi)+'</div>'
+    +'<div class="num" style="font-size:11px;font-weight:500;margin-top:6px;color:'+(passDiff>=0?'var(--ok-fg)':'var(--danger)')+'">'
+      +(passDiff>=0?'超出 ':'还差 ')+r1(Math.abs(passDiff))+' 分（及格线 '+DB.settings.passLine+'）</div>'
+    +'<hr class="hr" style="margin:16px 0 14px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+      +'<span style="font-size:10px;color:var(--ink-3)">卷面原始分 · 依据见下方折算卡</span>'
+      +'<span class="num" style="font-size:14px;font-weight:700">'+r1(paper.total)+' / 100</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px">'
+      +[['听力',paper.listen],['阅读',paper.read],['写作',paper.write],['翻译',paper.trans]].map(c=>
+        '<div style="padding:12px 4px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);text-align:center">'
+        +'<div style="font-size:9.5px;color:var(--ink-3)">'+c[0]+'</div>'
+        +'<div class="num" style="font-size:13px;font-weight:600;margin-top:4px">'+(c[1]==null?'未细分':r1(c[1]))+'</div>'
+        +'<div class="num" style="font-size:9px;color:var(--ink-4);margin-top:2px">/'+(c[0]==='写作'||c[0]==='翻译'?15:35)+'</div></div>').join('')
+    +'</div>'
+    +'<div style="padding:13px 14px;border-radius:10px;background:var(--surface-3);margin-top:14px">'
+      +'<div style="font-size:10px;color:var(--ink-3)">官方常模换算</div>'
+      +'<div class="num" style="font-size:12.5px;font-weight:600;margin-top:4px">(卷面分 − 52) ÷ 14 × 70 + 500</div>'
+      +'<div style="font-size:9.5px;color:var(--ink-4);margin-top:5px">常模均值与标准差官方不公布，取历史经验值（当前：'+NORMS[DB.settings.normParams].name+'组）</div>'
+    +'</div>'
+    +'<div class="foot" style="margin-top:14px">练习无时间压力，考场卷面分通常低于此值，建议以区间下沿 '+Math.round(rng.lo)+' 作为安全线。估分误差约 ±15~20 分。</div>'
+    +'</div>';
+
+  /* 提分贡献 */
+  let ctr='';
+  contribs.forEach((c,i)=>{
+    const val=i===0?c.delta710:0;
+    ctr+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;'
+      +(i?'border-top:1px solid var(--line-2)':'')+'">'
+      +'<span style="font-size:11px;color:var(--ink-2)">'+esc(c.m.name)+' · '+pct1(c.a.rate)+' → '+c.t+'%'
+        +'<span style="color:var(--ink-4)"> · '+r1(c.paperGap)+' 卷面分</span></span>'
+      +'<span class="num" style="font-size:12.5px;font-weight:700;color:'+(val>0?'var(--rose-soft)':'var(--ink-4)')+'">'
+        +(val>0?'+'+r1(val):'0.0')+'</span></div>';
+  });
+  const simNote=sim?'<div class="foot" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line-3)">'
+      +'提分模拟：把最弱模块「'+esc(sim.mod.name)+'」拉到目标 '+sim.target+'% → 整体正确率 '
+      +'<b class="num">'+pct(sim.base)+' ⇒ '+pct(sim.after)+'</b>（+'+r2(sim.delta)+' pt）</div>'
+    :'';
+
+  /* 卷面原始分折算链 */
+  const rowsOf=g=>g.rows.map(r=>r.name+' '+(r.covered?r1(r.got):'—')+'/'+r.full).join(' · ');
+  const paperCard='<div class="card">'
+    +'<div class="chead" style="margin-bottom:12px">'
+      +'<div class="hl"><div><h3>卷面原始分折算 · 预估分数的依据</h3>'
+      +'<div class="sub">每题原始分不等 → 按题型折成卷面 100 制 → 再分两路换算</div></div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<span style="display:flex;align-items:baseline;gap:5px"><span style="font-size:10px;color:var(--ink-3)">卷面合计</span>'
+          +'<span class="num" style="font-size:18px;font-weight:700;color:var(--rose-soft)">'+r1(paper.total)+' / 100</span></span>'
+        +'<span style="color:var(--ink-4)">→</span>'
+        +'<span style="display:flex;align-items:baseline;gap:5px;padding:5px 12px;border-radius:10px;background:var(--surface-3)">'
+          +'<span style="font-size:10px;color:var(--ink-3)">折合 710 制 · 卷面比例</span>'
+          +'<span class="num" style="font-size:20px;font-weight:700;color:var(--rose-soft)">'+r1(paper.ratio710)+'</span>'
+          +'<span style="font-size:10px;color:var(--ink-3)">分</span></span>'
+      +'</div></div>'
+    +'<div class="foot" style="font-size:11px;line-height:2;color:var(--ink-2)">'
+      +'<div><b>听力 '+r1(paper.listen)+'/35</b>　←　'+rowsOf(paper.groups.listen)+'</div>'
+      +'<div><b>阅读 '+r1(paper.read)+'/35</b>　←　'+rowsOf(paper.groups.read)+'</div>'
+      +'<div><b>写作 '+r1(paper.write)+'/15 · 翻译 '+r1(paper.trans)+'/15</b>　←　主观题走评分档自评（15 分制）</div>'
+      +'<div style="margin-top:6px;color:var(--ink)"><b class="num">卷面 100 制合计 = 听力 '+r1(paper.listen)+' + 阅读 '+r1(paper.read)+' + 写作 '+r1(paper.write)+' + 翻译 '+r1(paper.trans)+' = '+r1(paper.total)+'</b></div>'
+      +'<div style="color:var(--ink-3)">按卷面比例折 710 制 = '+r1(paper.total)+' ÷ 100 × 710 = <b class="num">'+r1(paper.ratio710)+'</b> 分　｜　'
+      +'按官方常模折 710 制 = ('+r1(paper.total)+' − 52) ÷ 14 × 70 + 500 = <b class="num">'+Math.round(core612)+'</b> 分</div>'
+    +'</div>'
+    +'<div class="foot" style="margin-top:8px">本卡为「卷面满分 → 710 满分」的比例等值（<b>不含常模</b>）；右上方「预估总分」走官方常模折算公式。两者口径不同、数值本就不同，都是预估分数的合法出口，不可互相替代。</div>'
+    +'</div>';
+
+  const b=DB.settings.colorBands;
+  const modCard='<div class="card" data-guide="cmp">'
+    +'<div class="chead"><div class="hl"><div><h3>模块正确率对比</h3>'
+    +'<div class="sub">已细分 '+leafN+' / '+allN+' 题 · '
+      +(DB.settings.accuracyMode==='weighted'?'加权口径 Σ正确 ÷ Σ题数':'简单口径 各条正确率取平均')+'</div>'
+    +'<div class="sub">低于 '+b[0]+'% 红 · '+b[0]+'–'+b[1]+'% 橙 · '+b[1]+'–'+b[2]+'% 粉 · ≥'+b[2]+'% 绿　｜　竖线是该模块自己的目标线（设置 → 目标与门槛）</div></div></div>'
+    +'<div class="seg sm" data-seg="modrange">'
+      +[['7','近 7 天'],['30','近 30 天'],['90','近 90 天'],['0','全部']].map(o=>
+        '<button data-act="modrange" data-v="'+o[0]+'" class="'+(String(ST.range.mod)===o[0]?'on':'')+'">'+o[1]+'</button>').join('')
+    +'</div></div>'
+    +bars
+    +'<div class="foot" style="margin-top:10px">子模块明细在「分析」页点模块卡查看</div>'
+    +'</div>';
+  const contribCard='<div class="card">'
+    +'<div class="chead"><div class="hl"><h3>提分贡献排序</h3></div>'
+    +'<span class="meta">(目标率 − 当前率) × 模块分值</span></div>'
+    +ctr
+    +'</div>';
+  return '<div class="main enter">'
+    +kpis
+    +'<div class="cols" style="--rc:340px;align-items:stretch">'
+      +'<div class="col">'+modCard+contribCard+'</div>'
+      +'<div class="col">'+estCard+'</div>'
+    +'</div>'
+    +diagCard(w,sim)
+    +paperCard
+    +'</div>';
+}
+function diagCard(w,sim){
+  const th=DB.settings.thresholds;
+  /* 横向通栏：最弱模块 | 最弱细分题型 | 提分模拟，三块并排 */
+  let cells;
+  if(!w.mod&&!w.sub){
+    cells='<div style="flex:1;display:flex;align-items:center"><div class="empty" style="flex:1">样本不足，继续积累 —— 模块需 ≥ '+th.module+' 题、细分题型需 ≥ '+th.subtype+' 题才参与诊断</div></div>';
+  }else{
+    cells=cellOf('最弱模块',w.mod,th.module)+cellOf('最弱细分题型',w.sub,th.subtype);
+  }
+  let simHtml;
+  if(sim){
+    simHtml='<div style="flex:1.35;min-width:300px;border-left:1px solid var(--line-2);padding-left:18px;display:flex;flex-direction:column;justify-content:center">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+        +'<span style="font-size:12px;font-weight:600">提分模拟 <span style="font-weight:400;color:var(--ink-3);font-size:10.5px">把「'+esc(sim.mod.name)+'」拉到目标 '+sim.target+'%</span></span>'
+        +'<span class="num" style="font-size:12px;font-weight:700;color:var(--ok-fg)">+'+r2(sim.delta)+' pt</span></div>'
+      +simBar('现在',sim.base,'var(--ink-4)')
+      +simBar('模拟后',sim.after,'var(--ok)')
+      +'</div>';
+  }else{
+    simHtml='<div style="flex:1.35;min-width:300px;border-left:1px solid var(--line-2);padding-left:18px;display:flex;align-items:center">'
+      +'<span class="foot">提分模拟需要先积累出最弱模块</span></div>';
+  }
+  return '<div class="card"><div class="chead"><div class="hl"><h3>弱项诊断</h3></div>'
+    +'<span class="pill">门槛：模块 ≥'+th.module+' 题 · 细分 ≥'+th.subtype+' 题</span></div>'
+    +'<div style="display:flex;gap:16px;align-items:stretch">'+cells+simHtml+'</div></div>';
+}
+function simBar(label,val,color){
+  const key='sim-'+(label==='现在'?'now':'after');
+  return '<div style="display:flex;align-items:center;gap:10px;margin-top:9px">'
+    +'<span style="font-size:10px;color:var(--ink-3);width:44px;flex:none">'+label+'</span>'
+    +'<div class="bar-track thin" style="flex:1"><div class="bar-fill" data-key="'+key+'" data-w="'+r1(val)+'" style="background:'+color+'"></div></div>'
+    +'<span class="num" style="font-size:11px;font-weight:600;width:66px;text-align:right">'+pct(val)+'</span></div>';
+}
+function cellOf(title,x,need){
+  if(!x)return '<div style="flex:.8;min-width:200px;padding:13px 16px;border-radius:12px;background:var(--surface-2);display:flex;flex-direction:column;justify-content:center">'
+    +'<div style="font-size:11px;color:var(--ink-3)">'+title+'</div>'
+    +'<div style="font-size:13px;color:var(--ink-4);margin-top:6px">样本不足</div></div>';
+  return '<div style="flex:.8;min-width:200px;padding:13px 16px;border-radius:12px;background:var(--surface-3);display:flex;flex-direction:column;justify-content:center">'
+    +'<div style="font-size:11px;color:var(--ink-3)">'+title+'</div>'
+    +'<div style="font-size:17px;font-weight:700;color:var(--rose-soft);margin-top:4px">'+esc(x.m.name)+'</div>'
+    +'<div class="num" style="font-size:10px;color:var(--ink-3);margin-top:3px">'+pct(x.a.rate)+' · '+x.a.n+' 题 · 目标 '+targetOf(x.m.id)+'%</div></div>';
+}
+
+/* ============================================================
+   视图：分析
+   ============================================================ */
+function vAnalyze(){
+  const list=coreRecs(DB.records);
+  const mods=roots().filter(m=>m.type!=='vocab').map(m=>({m,a:modAgg(list,m.id)}));
+  const open=ST.openMod?modById(ST.openMod):null;
+
+  let cards='<div class="grid" style="grid-template-columns:repeat('+mods.length+',minmax(0,1fr));gap:12px">';
+  mods.forEach(x=>{
+    const on=ST.openMod===x.m.id;
+    const kids=childrenOf(x.m.id);
+    const col=colorHex(x.a.rate);
+    cards+='<button class="card hoverable" data-act="openmod" data-v="'+x.m.id+'" '
+      +'style="text-align:left;cursor:pointer;padding:14px;'+(on?'border-color:var(--rose);background:var(--surface-3);':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span class="dot rd" style="background:'+x.m.color+'"></span>'
+        +'<span style="font-size:13px;font-weight:600;flex:1">'+esc(x.m.name)+'</span>'
+        +(kids.length?'<svg viewBox="0 0 24 24" width="12" height="12" fill="none" style="transform:rotate('+(on?180:0)+'deg);transition:transform var(--dur) var(--ease)">'
+          +'<path d="M6 9.5L12 15.5L18 9.5" stroke="'+(on?'#E04B84':'#C2AFB9')+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>':'')
+      +'</div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">'
+        +'<span class="num" style="font-size:22px;font-weight:700;color:'+col+'">'+pct1(x.a.rate)+'</span>'
+        +'<span class="num" style="font-size:10px;color:var(--ink-3)">'+x.a.n+' 题 · 目标 '+targetOf(x.m.id)+'%</span></div>'
+      +'</button>';
+  });
+  cards+='</div>';
+
+  /* 模块详情卡 */
+  const detail=open?detailCard(open):false;
+  const trendCard='<div class="card grow" style="min-width:0">'
+    +'<div class="chead"><div class="hl"><div><h3>趋势 · '+esc(open?open.name:'全部')+'</h3>'
+    +'<div class="sub">'+(ST.range.trend==='week'?'近 6 周 · 折线为该周正确率 · 虚线为目标线':'空白日为未练，不画点')+'</div></div></div>'
+    +'<div class="seg sm" data-seg="trendmode">'
+      +'<button data-act="trendmode" data-v="week" class="'+(ST.range.trend==='week'?'on':'')+'">周</button>'
+      +'<button data-act="trendmode" data-v="day" class="'+(ST.range.trend==='day'?'on':'')+'">日</button>'
+    +'</div></div>'
+    +(ST.range.trend==='day'
+      ?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+        +'<span style="font-size:10px;color:var(--ink-3)">范围</span>'
+        +'<div class="seg sm" data-seg="dayrange">'
+          +[[7,'7 天'],[14,'14 天'],[30,'30 天']].map(o=>'<button data-act="dayrange" data-v="'+o[0]+'" class="'+(ST.range.day===o[0]?'on':'')+'">'+o[1]+'</button>').join('')
+        +'</div>'
+        +'<span style="font-size:10px;color:var(--ink-4);margin-left:auto">切换后折线与摘要同步重算</span></div>'
+      :'')
+    +'<div class="chart" data-chart="trend" data-h="270"></div>'
+    +'</div>';
+
+  const dualCard='<div class="card grow" style="min-width:0"><div class="chead"><div class="hl"><div><h3>正确率 × 题量 · 近 8 周</h3>'
+    +'<div class="sub">练得多但没提升（柱高线平）与练得少但很准（柱低线高）一眼可分</div></div></div>'
+    +'<span class="meta">柱为当周题量（右轴）· 折线为当周正确率（左轴）</span></div>'
+    +'<div class="chart" data-chart="dual" data-h="230"></div></div>';
+  /* 选中模块 → 详情(480) | 趋势 两列；未选中 → 左列放占位卡，保持两列结构不跳变
+     （否则选中/取消时趋势卡在全宽与 480 列之间来回变形，整块布局都在动） */
+  const placeholder='<div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:280px;text-align:center">'
+    +'<span style="font-size:26px;opacity:.35">📊</span>'
+    +'<div style="font-size:12.5px;font-weight:600;color:var(--ink-2)">点上方模块卡下钻</div>'
+    +'<div class="foot" style="max-width:280px">左侧会显示该模块的子模块正确率、趋势速览与最弱题型 · 再点一次取消回到「全部」</div>'
+    +'</div>';
+  const rowA = '<div class="cols lfix" style="--lc:480px"><div class="col">'+(detail||placeholder)+'</div><div class="col">'+trendCard+'</div></div>';
+  return '<div class="main enter">'
+    +'<div class="card" data-guide="ana-drill"><div class="chead" style="margin-bottom:12px"><div class="hl"><div><h3>模块下钻</h3>'
+      +'<div class="sub">点模块卡看它的子模块正确率与趋势 · 再点一次取消（回到「全部」）</div></div></div>'
+      +'<span class="pill">当前：'+esc(open?open.name:'全部')+'</span></div>'+cards+'</div>'
+    +rowA
+    +'<div class="row">'+dualCard+'</div>'
+    +weeklyCard(open)
+    +'</div>';
+}
+function detailCard(m){
+  const list=coreRecs(DB.records);
+  const a=modAgg(list,m.id);
+  const kids=childrenOf(m.id);
+  const t=targetOf(m.id);
+  if(!kids.length){
+    return '<div class="card" style="width:480px;flex:1;display:flex;flex-direction:column"><div class="chead"><div class="hl">'
+      +'<span class="dot rd" style="background:'+m.color+'"></span><h3>'+esc(m.name)+'</h3></div></div>'
+      +'<div class="empty">这个模块还没细分到题型 —— 录入时选上「题型」这里就会出现</div></div>';
+  }
+  let rows='';
+  kids.forEach(k=>{
+    const ka=modAgg(list,k.id);
+    const col=colorHex(ka.rate);
+    rows+='<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:5px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+        +'<span style="font-size:11.5px;color:var(--ink-2)">'+esc(k.name)+'</span>'
+        +'<span class="num" style="font-size:12px;font-weight:600;color:'+col+'">'+pct(ka.rate)+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div class="bar-track thin" style="flex:1"><div class="bar-fill" data-key="sub-'+k.id+'" data-w="'+r1(ka.rate)+'" style="background:'+col+'"></div>'
+        +'<div class="bar-goal" style="left:'+t+'%"></div></div>'
+        +'<span class="num sub-meta">'+ka.n+' 题</span></div></div>';
+  });
+  /* 趋势速览 */
+  const ws=weeksSeries(6,m.id);
+  const vals=ws.map(x=>x.agg.rate);
+  const sl=slope(vals), sd=stdev(vals);
+  const wk=vals.filter(v=>v!=null);
+  const proj=wk.length>=2&&sl!=null?wk[wk.length-1]+sl*(Math.max(0,Math.round(dayDiff(todayStr(),DB.settings.examDate)/7))):null;
+  const weakest=kids.map(k=>({k,a:modAgg(list,k.id)})).filter(x=>x.a.rate!=null).sort((x,y)=>x.a.rate-y.a.rate)[0];
+  return '<div class="card" style="width:480px;flex:1;display:flex;flex-direction:column">'
+    +'<div class="chead" style="margin-bottom:12px"><div class="hl">'
+      +'<span class="dot rd" style="background:'+m.color+'"></span><h3>'+esc(m.name)+'</h3>'
+      +'<span class="pill rose">展开态 · '+kids.length+' 个题型</span></div>'
+      +'<span class="meta">'+pct1(a.rate)+' · '+a.n+' 题 ｜ 目标 '+t+'%</span></div>'
+    +'<div style="font-size:11px;font-weight:500;color:var(--ink-2);margin-bottom:8px">子模块正确率 · 卷面分值加权口径</div>'
+    +'<div style="display:flex;flex-direction:column;gap:9px">'+rows+'</div>'
+    +'<hr class="hr">'
+    +'<div style="font-size:11px;font-weight:500;color:var(--ink-2);margin-bottom:8px">趋势速览 · '+esc(m.name)+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">'
+      +miniCell('近 6 周斜率',sl==null?'—':(sl>=0?'+':'')+r2(sl)+' pt/周',sl==null?'样本不足':(sl>=0.3?'方向：上升':(sl<=-0.3?'方向：下滑':'方向：基本持平')),sl==null?null:(sl>=0?'var(--ok-fg)':'var(--danger)'))
+      +miniCell('周正确率波动',sd==null?'—':'±'+r2(sd)+' pt',sd==null?'样本不足':(sd<3?'判定：稳定':(sd<6?'判定：一般':'判定：波动大')),'var(--amber)')
+      +miniCell('外推至考试日',proj==null?'—':pct1(clamp(proj,0,100)),proj==null?'—':(proj>=t?'可达目标线':'仍低于目标'),'var(--rose-soft)')
+    +'</div>'
+    +(weakest?'<div class="hint" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16.5v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg>'
+      +'<span style="flex:1">最该补：<b>'+esc(weakest.k.name)+'</b> '+pct(weakest.a.rate)+'，低于目标 '+r1(t-weakest.a.rate)+' pt（'+weakest.a.n+' 题样本）</span>'
+      +'<span class="pill rose">优先练</span></div>':'')
+    +'</div>';
+}
+function miniCell(label,val,sub,color){
+  return '<div style="padding:11px;border-radius:10px;background:var(--surface-2);min-width:0">'
+    +'<div style="font-size:9.5px;color:var(--ink-3)">'+label+'</div>'
+    +'<div class="num" style="font-size:13px;font-weight:700;margin-top:3px;color:'+(color||'var(--ink)')+'">'+val+'</div>'
+    +'<div style="font-size:9.5px;color:var(--ink-4);margin-top:2px">'+sub+'</div></div>';
+}
+function weeklyCard(open){
+  const ws=weeksSeries(2,open);
+  const cur=ws[1]?ws[1].agg:{n:0,hit:0,rate:null};
+  const g=DB.settings.goals;
+  const w=weakSpots(coreRecs(DB.records));
+  const range=ws[1]?(fmtDate(ws[1].start)+' 至 '+fmtDate(ws[1].end)):'—';
+  const days=new Set(DB.records.filter(r=>r.date>=ws[1].start&&r.date<=ws[1].end).map(r=>r.date)).size;
+  /* 通栏横排：左总结句，右目标双线 + 导出按钮 */
+  return '<div class="card">'
+    +'<div class="chead"><div class="hl"><h3>周报 · '+range+'</h3><span class="pill rose">自动生成</span></div>'
+    +'<span class="meta num">本周 '+cur.n+' 题 · 打卡 '+days+' 天</span></div>'
+    +'<div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start">'
+      +'<div style="min-width:0">'
+        +'<div style="padding:13px 14px;border-radius:12px;background:var(--surface-3);font-size:12.5px;line-height:1.8">'+esc(weeklyReport(null))+'</div>'
+        +(w.sub?'<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface-2);margin-top:12px">'
+          +'<span class="pill rose" style="flex:none">下周重点</span>'
+          +'<span style="font-size:11px;color:var(--ink-2)">'+esc(w.sub.m.name)+' '+pct(w.sub.a.rate)+' 是最弱细分题型，优先补</span></div>':'')
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:12px">'
+        +goalLine('周正确率',cur.rate,g.weeklyAccuracy,'var(--ok)')
+        +goalLine('周题量',cur.n,g.weeklyTotal,'var(--pink-2)',true)
+        +'<button class="btn g blk" data-act="share">导出周报图 · 800×1000 PNG</button>'
+      +'</div>'
+    +'</div>'
+    +'</div>';
+}
+function goalLine(name,val,target,color,isInt){
+  const w=val==null?0:clamp(val/target*100,0,120);
+  const ok=val!=null&&val>=target;
+  return '<div style="display:flex;align-items:center;gap:10px">'
+    +'<span style="font-size:11px;color:var(--ink-2);width:62px;flex:none">'+name+'</span>'
+    +'<div class="bar-track thin" style="flex:1;height:9px"><div class="bar-fill" data-key="goal-'+name+'" data-w="'+r1(w)+'" style="background:'+(ok?'var(--ok)':color)+'"></div></div>'
+    +'<span class="num" style="font-size:11px;font-weight:600;width:112px;text-align:right;flex:none;color:'+(ok?'var(--ok-fg)':'var(--ink-3)')+'">'
+      +(val==null?'—':(isInt?Math.round(val):r1(val)))+' / '+target+'</span></div>';
+}
+/* ============================================================
+   视图：单词
+   ============================================================ */
+function vVocab(){
+  const v=vocabBreak();
+  const bookSize=DB.settings.vocabBookSize;
+  const books={};
+  DB.records.filter(r=>r.module==='word_new'&&r.book).forEach(r=>{
+    const k=r.book;(books[k]=books[k]||{n:0});books[k].n+=recStat(r).n;
+  });
+  const wCard=(o)=>'<div class="card hoverable" style="padding:16px">'
+    +'<div style="font-size:11px;color:var(--ink-3)">'+o.label+'</div>'
+    +'<div class="num" style="font-size:24px;font-weight:700;margin:6px 0 4px;color:'+(o.color||'var(--ink)')+'">'+o.value+'</div>'
+    +'<div style="font-size:10px;color:'+(o.subColor||'var(--ink-3)')+'">'+o.sub+'</div></div>';
+  const nRate=v.newAgg.rate, rRate=v.revAgg.rate;
+  const nOK=nRate!=null&&nRate>=60&&nRate<=75, rOK=rRate!=null&&rRate>=DB.settings.reviewThreshold;
+  const cards='<div class="grid" data-guide="vocab-kpi" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">'
+    +wCard({label:'新词首答率',value:pct(nRate),color:nRate==null?'var(--ink-4)':colorHex(nRate),
+      sub:'目标区间 60–75% · '+(nRate==null?'暂无数据':(nOK?'达标':'需调整背词强度')),subColor:nOK?'var(--ok-fg)':'var(--ink-3)'})
+    +wCard({label:'复习正确率',value:pct(rRate),color:rRate==null?'var(--ink-4)':colorHex(rRate),
+      sub:'阈值 ≥ '+DB.settings.reviewThreshold+'% · '+(rRate==null?'暂无数据':(rOK?'达标':'偏低')),subColor:rOK?'var(--ok-fg)':'var(--amber)'})
+    +wCard({label:'累计过词量',value:v.passed.toLocaleString()+' 词',color:'var(--vocab)',
+      sub:'词书 '+bookSize+' 词 · 进度 '+pct(bookSize?v.passed/bookSize*100:null)})
+    +wCard({label:'待复习池',value:v.pool.length+' 个单元',color:v.pool.length?'var(--amber)':'var(--ok-fg)',
+      sub:v.pool.length?'最近两轮复习低于阈值':'复习节奏正常'})
+    +'</div>';
+
+  const pool='<div class="card"><div class="chead"><div class="hl"><h3>待复习池</h3></div>'
+    +'<span class="meta">'+(v.pool.length?v.pool.length+' 个单元待重做':'全部达标')+'</span></div>'
+    +'<div class="foot" style="margin-bottom:10px">按 book 分组，最近两轮复习正确率均低于阈值 '+DB.settings.reviewThreshold+'% 的单元进入这里，建议重做。</div>'
+    +(v.pool.length?v.pool.map(p=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border-radius:10px;background:var(--surface-3);margin-bottom:8px">'
+        +'<span style="font-size:11.5px;font-weight:500">'+esc(p.book)+'</span>'
+        +'<span class="num" style="font-size:10.5px;color:var(--amber)">'+pct(p.rate)+' · '+p.n+' 词 · 建议重做</span></div>').join('')
+      :'<div class="empty">没有需要重做的单元，保持这个节奏</div>')
+    +'</div>';
+
+  const rhythm=reviewRhythm();
+  const rhythmCard='<div class="card"><div class="chead"><div class="hl"><h3>复习节奏</h3></div></div>'
+    +'<div class="foot" style="margin-bottom:10px">次日 → 4 天 → 7 天 → 15 天 · 逾期未做会进「待复习池」</div>'
+    +rhythm.map(r=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border-radius:10px;background:var(--surface-2);margin-bottom:8px">'
+      +'<span style="font-size:11.5px;color:var(--ink-2)">'+r.label+'</span>'
+      +'<span class="num" style="font-size:10.5px;color:'+(r.rows.length?'var(--rose-soft)':'var(--ink-4)')+'">'
+        +(r.rows.length?sum(r.rows.map(x=>recStat(x).n))+' 词':'无记录')+'</span></div>').join('')
+    +'</div>';
+
+  const detail='<div class="card"><div class="chead"><div class="hl"><div><h3>词书进度明细</h3>'
+    +'<div class="sub">四级核心 '+bookSize+' 词 · 已过 '+v.passed.toLocaleString()+' 词（'+pct(bookSize?v.passed/bookSize*100:null)+'）</div></div></div></div>'
+    +(Object.keys(books).length?'<div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">'
+      +Object.keys(books).map(k=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:10px;background:var(--surface-2)">'
+        +'<span style="font-size:11px">'+esc(k)+'</span>'
+        +'<span class="num" style="font-size:10.5px;color:var(--ink-3)">'+books[k].n+' 词</span></div>').join('')+'</div>'
+      :'<div class="empty">还没有按单元背词的记录</div>')
+    +'</div>';
+
+  const dailyCard='<div class="card"><div class="chead"><div class="hl"><div><h3>每日过词量 · 近 14 天</h3>'
+    +'<div class="sub">紫色为新词，浅粉为当日合计（新词 + 复习）</div></div></div></div>'
+    +'<div class="chart" data-chart="dwords" data-h="170"></div></div>';
+  return '<div class="main enter">'
+    +cards
+    +'<div class="cols">'
+      +'<div class="col">'+dailyCard+'</div>'
+      +'<div class="col">'+pool+rhythmCard+'</div>'
+    +'</div>'
+    +detail
+    +'</div>';
+}
+
+/* ============================================================
+   视图：历史
+   ============================================================ */
+function vHistory(){
+  const f=ST.filters;
+  let list=DB.records.slice();
+  if(f.mod)list=list.filter(r=>subtree(f.mod).indexOf(r.module)>=0);
+  if(f.tag)list=list.filter(r=>(r.tag||'')===f.tag);
+  if(f.days)list=list.filter(r=>dayDiff(r.date,todayStr())<f.days);
+  if(f.q){const q=f.q.toLowerCase();list=list.filter(r=>(modPath(r.module)+' '+(r.note||'')).toLowerCase().indexOf(q)>=0);}
+  list.sort((a,b)=>a.date<b.date?1:(a.date>b.date?-1:b.createdAt-a.createdAt));
+  const tags=['真题','模拟','专项','复习'];
+  return '<div class="main enter">'
+    +'<div class="card" style="padding:14px 16px">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+        +'<div class="field" style="flex:1;min-width:180px"><input class="inp" id="hq" placeholder="搜索模块 / 备注关键词" value="'+esc(f.q)+'" data-bind="f.q"></div>'
+        +'<div class="chips">'
+          +'<button class="chip '+(f.mod?'':'on')+'" data-act="fmod" data-v="">全部模块</button>'
+          +roots().map(m=>'<button class="chip '+(f.mod===m.id?'on':'')+'" data-act="fmod" data-v="'+m.id+'"><span class="cd" style="background:'+m.color+'"></span>'+esc(m.name)+'</button>').join('')
+        +'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">'
+        +'<div class="chips"><button class="chip '+(f.tag?'':'on')+'" data-act="ftag" data-v="">全部标签</button>'
+          +tags.map(t=>'<button class="chip '+(f.tag===t?'on':'')+'" data-act="ftag" data-v="'+t+'">'+t+'</button>').join('')+'</div>'
+        +'<div class="seg sm" style="margin-left:auto" data-seg="fdays">'
+          +[[7,'近 7 天'],[30,'近 30 天'],[90,'近 90 天'],[0,'全部']].map(o=>
+            '<button data-act="fdays" data-v="'+o[0]+'" class="'+(String(f.days)===o[0]?'on':'')+'">'+o[1]+'</button>').join('')
+        +'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="card">'
+      +'<div class="chead"><div class="hl"><h3>记录列表</h3></div>'
+        +'<span class="meta num">共 '+list.length+' 条 · 按日期倒序'+(f.mod||f.tag||f.days||f.q?' · 已筛选':'')+'</span></div>'
+      +'<div id="hlist">'+hlistInner()+'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+/* ============================================================
+   视图：设置
+   ============================================================ */
+function settingsBody(){
+  const s=DB.settings;
+  const numField=(label,k2,val,unit,hint)=>'<div class="field"><label>'+label+'</label>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<input class="inp num" style="height:36px;font-size:13px" type="number" step="1" data-set="'+k2+'" value="'+val+'">'
+    +(unit?'<span style="font-size:11px;color:var(--ink-3);flex:none">'+unit+'</span>':'')+'</div>'
+    +(hint?'<span style="font-size:9.5px;color:var(--ink-4)">'+hint+'</span>':'')+'</div>';
+
+  /* 模块管理：名称就地改（data-rename）· 每个一级模块可「＋细分」· 细分可「删」（记录归入上级） */
+  const modGroups=roots().map(m=>{
+    const kids=childrenOf(m.id);
+    const a=modAgg(coreRecs(DB.records),m.id);
+    const rows=kids.map(k=>{
+      const kn=DB.records.filter(r=>r.module===k.id).length;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 14px;margin-left:10px;border-left:2px solid var(--line-2)">'
+        +'<span class="dot rd" style="background:'+m.color+';opacity:.5;width:6px;height:6px;flex:none"></span>'
+        +'<input class="inp" style="flex:1;height:30px;font-size:12px;padding:0 10px" data-rename="'+k.id+'" value="'+esc(k.name)+'">'
+        +'<span class="num" style="font-size:10px;color:var(--ink-4);width:46px;text-align:right;flex:none">'+kn+' 条</span>'
+        +'<button class="btn sm" data-act="delsub" data-v="'+k.id+'" title="删除该细分题型">删除</button>'
+        +'</div>';
+    }).join('');
+    return '<div style="padding:11px 12px;border-radius:12px;background:var(--surface-2);'+(m.order>1?'margin-top:10px':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:9px">'
+        +'<span class="dot rd" style="background:'+m.color+';flex:none"></span>'
+        +'<input class="inp" style="width:92px;height:32px;font-size:12.5px;font-weight:600;padding:0 10px" data-rename="'+m.id+'" value="'+esc(m.name)+'">'
+        +'<span class="num" style="font-size:10px;color:var(--ink-3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+          +(m.score?m.score+' 分权重 · ':'独立体系 · ')+'当前 '+pct(a.rate)+'</span>'
+        +'<input class="inp num" style="width:58px;height:30px;font-size:12px" type="number" data-target="'+m.id+'" value="'+(s.targets.byModule[m.id]!=null?s.targets.byModule[m.id]:'')+'" placeholder="目标%">'
+        +'<button class="btn sm" data-act="addsub" data-v="'+m.id+'">＋细分</button>'
+      +'</div>'
+      +(rows?'<div style="margin-top:7px;display:flex;flex-direction:column;gap:2px">'+rows+'</div>':'')
+      +'</div>';
+  }).join('');
+
+  return '<div class="cols">'
+    +'<div class="col">'
+      +'<div class="card">'
+        +'<div class="chead"><div class="hl"><div><h3>模块管理</h3>'
+          +'<div class="sub">名称点进去直接改 · 「＋细分」添加题型 · 「删除」移除题型（其记录归入上级模块）</div></div></div></div>'
+        +modGroups
+      +'</div>'
+    +'</div>'
+    +'<div class="col">'
+      +'<div class="card"><div class="chead"><div class="hl"><h3>目标与门槛</h3>'
+        +'<div class="sub">客观题 = 听力 + 阅读的选择题 · 主观题 = 写作 + 翻译 · 各模块可在「模块管理」里单独设目标</div></div></div></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +numField('客观题目标','targets.objective',s.targets.objective,'%')
+          +numField('主观题目标','targets.subjective',s.targets.subjective,'%')
+          +numField('周题量目标','goals.weeklyTotal',s.goals.weeklyTotal,'题')
+          +numField('最低参与题量','minQuestions',s.minQuestions,'题')
+          +numField('弱项门槛 · 模块','thresholds.module',s.thresholds.module,'题')
+          +numField('弱项门槛 · 细分','thresholds.subtype',s.thresholds.subtype,'题')
+          +numField('复习正确率阈值','reviewThreshold',s.reviewThreshold,'%')
+          +numField('词书总量','vocabBookSize',s.vocabBookSize,'词')
+        +'</div>'
+      +'</div>'
+      +'<div class="card"><div class="chead"><div class="hl"><div><h3>考试与估分</h3>'
+        +'<div class="sub">影响倒计时、估分常模参数与及格线差值</div></div></div></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="field"><label>考试日期</label>'
+            +datePickerHTML('data-set="examDate" value="'+s.examDate+'" style="height:36px;font-size:13px;min-width:0"',false)+'</div>'
+          +numField('及格线','passLine',s.passLine,'分')
+        +'</div>'
+        +'<div style="font-size:11.5px;font-weight:500;margin:14px 0 8px">估分常模参数 <span style="font-weight:400;color:var(--ink-3);font-size:10.5px">（只影响「预估总分」）</span></div>'
+        +'<div class="seg fw" data-seg="norm">'
+          +Object.keys(NORMS).map(k=>'<button data-act="norm" data-v="'+k+'" class="'+(s.normParams===k?'on':'')+'">'+NORMS[k].name+' '+NORMS[k].mean+' / '+NORMS[k].sd+'</button>').join('')
+        +'</div>'
+        +'<div class="foot" style="margin-top:8px">常模均值与标准差官方不公布，取历史经验值：核心预估取中性，波动区间取保守与乐观。</div>'
+      +'</div>'
+      +'<div class="card"><div class="chead"><div class="hl"><div><h3>口径与统计</h3>'
+        +'<div class="sub">切换后所有模块正确率与预估总分同步重算</div></div></div></div>'
+        +'<div class="seg fw" data-seg="accmode" style="margin-bottom:10px">'
+          +'<button data-act="accmode" data-v="weighted" class="'+(s.accuracyMode==='weighted'?'on':'')+'">加权汇总</button>'
+          +'<button data-act="accmode" data-v="average" class="'+(s.accuracyMode==='average'?'on':'')+'">简单平均</button>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px;background:var(--surface-2)">'
+          +'<span style="font-size:11.5px;color:var(--ink-2)">正确率统计含单词模块</span>'
+          +'<div class="seg sm" data-seg="incvocab">'
+            +'<button data-act="incvocab" data-v="1" class="'+(s.includeVocab?'on':'')+'">含</button>'
+            +'<button data-act="incvocab" data-v="0" class="'+(s.includeVocab?'':'on')+'">不含</button>'
+          +'</div>'
+        +'</div>'
+        +'<div class="foot" style="margin-top:8px">加权 = Σ正确 ÷ Σ题量（父模块由子树汇总）· 简单平均 = 每条记录的正确率取平均。</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)">'
+          +'<span style="font-size:11.5px;font-weight:500">深色模式</span>'
+          +'<div class="seg" data-seg="theme">'
+            +'<button data-act="theme" data-v="light" class="'+(s.theme!=='dark'?'on':'')+'">浅色</button>'
+            +'<button data-act="theme" data-v="dark" class="'+(s.theme==='dark'?'on':'')+'">深色</button>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)">'
+          +'<span style="font-size:11.5px;font-weight:500">新手引导</span>'
+          +'<button class="btn sm" data-act="guide-start">重看引导</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+function settingsModal(){
+  openModal('<div class="modal" style="width:min(960px,100%)" data-settings="1">'
+    +'<div class="mhead"><div><div style="font-size:16px;font-weight:600">设置</div>'
+      +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">改完即时生效 · 全部设置保存在本机 localStorage（'+LS_KEY+'）</div></div>'
+      +'<button class="mclose" data-act="close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>'
+    +'<div class="mbody">'+settingsBody()+'</div>'
+    +'</div>');
+}
+function refreshSettingsModal(){
+  if(document.querySelector('#modal-root [data-settings]'))settingsModal();
+}
+/* ============================================================
+   状态
+   ============================================================ */
+const ST={
+  view:'overview', mode:'mod', guide:-1,
+  range:{mod:0, trend:'week', day:14},
+  openMod:null,
+  filters:{mod:'',tag:'',days:30,q:''},
+  draft:{}, batch:{}, edit:null, undo:null,
+};
+function resetDraft(keep){
+  const p=ST.draft||{};
+  const last=DB.records.slice().sort((a,b)=>b.createdAt-a.createdAt)[0];
+  ST.draft={
+    date:todayStr(),
+    tag:keep?(p.tag||''):'',
+    dur:'', note:'',
+    mod:keep?(p.mod||'listen'):((last&&!isVocab(last.module))?last.module:'listen'),
+    sub:'', total:'', wrong:'', correct:'',
+    kind:keep?(p.kind||'new'):'new',
+    book:p.book||'',
+  };
+  if(ST.draft.mod&&modById(ST.draft.mod)&&modById(ST.draft.mod).parent)ST.draft.mod=modById(ST.draft.mod).parent;
+}
+/* 一整套按细分题型录入：听阅各 3 个题型 + 写作 / 翻译（满分制）—— 每题分值不同，统计落到各题型 */
+const BATCH_ROWS=[
+  ['listen_news','新闻听力','listen',7,0],
+  ['listen_conv','长对话',  'listen',8,0],
+  ['listen_pass','听力篇章','listen',10,0],
+  ['read_word', '选词填空','read',10,0],
+  ['read_match','长篇匹配','read',10,0],
+  ['read_care', '仔细阅读','read',10,0],
+  ['write',     '写作',    'write',15,1],
+  ['trans',     '翻译',    'trans',15,1],
+];
+function resetBatch(){
+  ST.batch={date:todayStr()};
+  BATCH_ROWS.forEach(r=>{ST.batch[r[0]]={a:'',b:''};});
+}
+
+/* ============================================================
+   侧栏：记一笔
+   ============================================================ */
+function todayList(){
+  const rs=DB.records.filter(r=>r.date===todayStr());
+  const a=agg(rs);
+  if(!rs.length)return '';
+  return '<div class="card"><div class="chead" style="margin-bottom:10px">'
+    +'<div class="hl"><h3 style="font-size:13px">今天已记</h3></div>'
+    +'<span class="meta num">'+rs.length+' 条 · '+a.n+' 题</span></div>'
+    +rs.slice().sort((x,y)=>y.createdAt-x.createdAt).map(r=>{
+      const s=recStat(r),rt=rateOf(s.hit,s.n);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0">'
+        +'<span style="font-size:11px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(modPath(r.module))+'</span>'
+        +'<span class="num" style="font-size:10.5px;color:var(--ink-3);flex:none">'+s.hit+'/'+s.n+' · '+pct(rt)+'</span></div>';
+    }).join('')
+    +'</div>';
+}
+function calcPreview(){
+  const d=ST.draft;
+  if(ST.mode==='vocab'){
+    const t=+d.total||0, c=+d.correct||0;
+    const r=t?c/t*100:null;
+    return {n:t,hit:c,rate:r,label:'本次正确率',target:DB.settings.reviewThreshold};
+  }
+  const t=+d.total||0;
+  let c=+d.correct;
+  const w=+d.wrong;
+  if(d.wrong!==''&&!isNaN(w)&&t)c=t-w;
+  if(isNaN(c))c=null;
+  const r=(t&&c!=null&&c>=0)?c/t*100:null;
+  return {n:t,hit:c,rate:r,label:'本次正确率',target:null};
+}
+/* 历史页右栏：数据与备份 + 设置入口（数据页已并入这里，设置改为弹窗） */
+function historySide(){
+  let h='<div class="card"><div class="chead" style="margin-bottom:10px">'
+    +'<div class="hl"><h3 style="font-size:15px">数据与备份</h3></div></div>'
+    +'<div class="foot" style="margin-bottom:12px">纯本机存储（localStorage 单 key <b>'+LS_KEY+'</b>），不上传任何地方。导入会覆盖当前数据，但可撤销。</div>'
+    +'<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px">'
+      +'<button class="btn p" data-act="expjson">导出 JSON</button>'
+      +'<button class="btn" data-act="expcsv">导出 CSV</button>'
+      +'<button class="btn" data-act="impjson">导入 JSON</button>'
+      +'<button class="btn" data-act="impcsv">导入 CSV</button>'
+    +'</div>'
+    +(DB.settings._demo?'<div class="hint" style="margin-top:12px">当前是<b>演示数据</b>，随便点两下熟悉之后再清空更安全。<button class="btn sm d" data-act="cleardemo" style="margin-left:auto">清空演示数据</button></div>':'')
+    +'<hr class="hr" style="margin:14px 0 12px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<span style="font-size:11.5px;font-weight:600;color:var(--danger)">危险操作</span>'
+      +'<span class="num" style="font-size:10px;color:var(--ink-4)">共 '+DB.records.length+' 条</span></div>'
+    +'<div class="foot" style="margin-bottom:10px">清空前建议先「导出 JSON」留一份备份；这一步不可恢复。</div>'
+    +'<button class="btn d blk" data-act="wipe">清空全部数据</button>'
+    +'<button class="btn blk" data-act="openSettings" style="margin-top:10px">打开设置</button>'
+    +'</div>';
+  h+='<div class="card"><div class="chead"><div class="hl"><h3 style="font-size:13.5px">CSV / Excel 导入格式</h3></div></div>'
+    +'<div class="foot" style="margin-bottom:10px">首行为表头，按列名识别、顺序无关；模块列同时支持名称（听力）与 id（listen）。</div>'
+    +'<div style="padding:11px;border-radius:10px;background:var(--surface-2);overflow-x:auto">'
+      +'<pre class="num" style="font-size:10px;color:var(--ink-2);white-space:pre;line-height:1.9">日期,模块,总数,正确数,满分,得分,标签,用时,备注\n2026-09-29,听力,21,16,,,,真题,25,新闻错了2题\n2026-09-29,写作,,,15,11.5,,35,</pre></div>'
+    +'</div>';
+  return h;
+}
+function sidePanel(){
+  if(ST.view==='history')return historySide();
+  const d=ST.draft;
+  const mode=ST.mode;
+  let h='<div class="card"><div class="chead" style="margin-bottom:12px">'
+    +'<div class="hl"><h3 style="font-size:15px">记一笔</h3></div><span class="meta">约 30 秒</span></div>'
+    +'<div class="seg fw" data-seg="smode" style="margin-bottom:14px">'
+      +[['mod','模块刷题'],['set','一整套'],['vocab','背单词']].map(o=>
+        '<button data-act="smode" data-v="'+o[0]+'" class="'+(mode===o[0]?'on':'')+'">'+o[1]+'</button>').join('')
+    +'</div>';
+
+  if(mode==='set'){
+    h+='<div class="foot" style="margin-bottom:10px">按细分题型分 8 行录入 · 每题分值不同，统计落到各题型 · 只填要录的行，总数留空按默认题数</div>';
+    BATCH_ROWS.forEach(c=>{
+      const v=ST.batch[c[0]]||{a:'',b:''};
+      const root=modById(c[2]);
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        +'<span class="dot rd" style="background:'+root.color+'"></span>'
+        +'<span style="font-size:11.5px;font-weight:500;width:52px;flex:none">'+c[1]+'</span>'
+        +'<input class="inp num" style="height:34px;font-size:13px;flex:1" placeholder="'+(c[4]?'满分 '+c[3]:'总数 '+c[3])+'" data-bind2="'+c[0]+'.a" value="'+esc(v.a)+'">'
+        +'<input class="inp num" style="height:34px;font-size:13px;flex:1" placeholder="'+(c[4]?'实得':'错题')+'" data-bind2="'+c[0]+'.b" value="'+esc(v.b)+'">'
+        +'</div>';
+    });
+    h+='<button class="btn p blk" data-act="batchsave" style="margin-top:6px">生成记录 · 最多 8 条</button>';
+  }else if(mode==='vocab'){
+    h+='<div style="font-size:10px;color:var(--ink-3);margin-bottom:7px">类型</div>'
+      +'<div class="seg fw" data-seg="vkind" style="margin-bottom:12px">'
+        +'<button data-act="vkind" data-v="new" class="'+(d.kind==='new'?'on':'')+'">新词</button>'
+        +'<button data-act="vkind" data-v="rev" class="'+(d.kind==='rev'?'on':'')+'">复习</button></div>'
+      +'<div class="field" style="margin-bottom:10px"><label>单元 / 词书</label>'
+        +'<input class="inp" data-bind="book" value="'+esc(d.book)+'" placeholder="四级核心 Unit 12"></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        +'<div class="field"><label>词数</label><input class="inp num" type="number" data-bind="total" value="'+esc(d.total)+'" placeholder="40"></div>'
+        +'<div class="field"><label>认识 / 答对</label><input class="inp num" type="number" data-bind="correct" value="'+esc(d.correct)+'" placeholder="25"></div>'
+      +'</div>';
+  }else{
+    const mods=roots();
+    /* 智能推荐：按各模块「目标 − 正确率」的缺口挑最该练的，样本太小的模块先靠边；
+       每天打开都按最新数据重算，练完今天推荐的，明天的推荐会自动轮到下一个 */
+    const reco=recoModule();
+    if(reco){
+      const gap=reco.a.rate==null?null:reco.a.rate-reco.t;
+      h+='<button class="reco-row" data-act="smod" data-v="'+reco.m.id+'" title="点击直接选中该模块">'
+        +'<span class="pill rose" style="flex:none">智能推荐</span>'
+        +'<span style="font-size:11.5px;font-weight:600;min-width:0">今日练「'+esc(reco.m.name)+'」</span>'
+        +'<span class="num" style="font-size:10px;color:var(--ink-3);margin-left:auto;flex:none">'
+          +(gap==null?'':pct(reco.a.rate)+' · '+(gap>=0?'超目标 +':'距目标 ')+r1(Math.abs(gap))+' pt')+'</span>'
+      +'</button>';
+    }
+    h+='<div style="font-size:10px;color:var(--ink-3);margin-bottom:7px">模块</div><div class="chips" style="margin-bottom:12px">'
+      +mods.map(m=>'<button class="chip '+(d.mod===m.id?'on':'')+'" data-act="smod" data-v="'+m.id+'"><span class="cd" style="background:'+(d.mod===m.id?'#fff':m.color)+'"></span>'+esc(m.name)+'</button>').join('')
+      +'</div>';
+    const kids=childrenOf(d.mod);
+    h+='<div style="font-size:10px;color:var(--ink-3);margin-bottom:7px">题型 <span style="color:var(--ink-4)">（不选即记为未细分）</span></div>'
+      +'<div class="chips" style="margin-bottom:12px">'
+        +'<button class="chip '+(d.sub===''?'on':'')+'" data-act="ssub" data-v="">不细分</button>'
+        +kids.map(k=>'<button class="chip '+(d.sub===k.id?'on':'')+'" data-act="ssub" data-v="'+k.id+'">'+esc(k.name)+'</button>').join('')
+      +'</div>';
+    const subj=isSubjective(d.sub||d.mod);
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="field"><label>'+(subj?'满分':'题目总数')+'</label><input class="inp num" type="number" data-bind="total" value="'+esc(d.total)+'" placeholder="'+(subj?'15':'30')+'"></div>'
+      +(subj
+        ?'<div class="field"><label>实得</label><input class="inp num" type="number" step="0.5" data-bind="correct" value="'+esc(d.correct)+'" placeholder="11.5"></div>'
+        :'<div class="field"><label>错了几题</label><input class="inp num" type="number" data-bind="wrong" value="'+esc(d.wrong)+'" placeholder="6"></div>')
+      +'</div>';
+  }
+  /* 实时预览 */
+  if(mode!=='set'){
+    const p=calcPreview();
+    h+='<div id="calcbar" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:10px;background:var(--surface-3);margin-top:12px">'
+      +'<span class="num" style="font-size:10.5px;color:var(--ink-3)">'+(p.n?('正确 '+p.hit+' / '+p.n):'填数字后自动算')+'</span>'
+      +'<span class="num" style="font-size:17px;font-weight:700;color:'+(p.rate==null?'var(--ink-4)':colorHex(p.rate))+'">'+(p.rate==null?'—':pct(p.rate))+'</span>'
+      +'</div>';
+  }
+  /* 公共字段 */
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">'
+      +'<div class="field"><label>日期（可改 · 支持补记）</label>'
+        +datePickerHTML('data-bind="date" value="'+d.date+'" style="height:34px;font-size:13px"',true)+'</div>'
+    +(mode==='vocab'
+      ?'<div class="field"><label>用时（分钟）</label><input class="inp num" type="number" data-bind="dur" value="'+esc(d.dur)+'" placeholder="选填"></div>'
+      :'<div class="field"><label>用时（分钟）</label><input class="inp num" type="number" data-bind="dur" value="'+esc(d.dur)+'" placeholder="选填"></div>')
+    +'</div>';
+  if(mode!=='vocab'){
+    h+='<div style="font-size:10px;color:var(--ink-3);margin:11px 0 7px">标签 <span style="color:var(--ink-4)">（选填）</span></div>'
+      +'<div class="chips">'+['真题','模拟','专项','复习'].map(t=>
+        '<button class="chip '+(d.tag===t?'on':'')+'" data-act="stag" data-v="'+t+'">'+t+'</button>').join('')
+      +(d.tag?'<button class="chip" data-act="stag" data-v="">清除</button>':'')+'</div>';
+  }
+  h+='<div class="field" style="margin-top:11px"><label>备注</label>'
+    +'<textarea class="inp" data-bind="note" placeholder="选填，不填不影响统计">'+esc(d.note)+'</textarea></div>';
+  if(mode==='set'){
+    h+='<div class="foot" style="margin-top:10px">整套模式按填了错题数的行生成记录（最多 8 条）· 补记改日期请切回「模块刷题」。</div>';
+  }else{
+    h+='<button class="btn p blk" data-act="save" style="height:44px;font-size:13px;margin-top:12px">'
+      +'保存'+(calcPreview().rate!=null?' · '+pct(calcPreview().rate):'')+'</button>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+        +'<button class="btn" data-act="copylast" style="flex:1">复制上一条</button>'
+        +'<button class="btn" data-act="sreset" style="flex:1">清空表单</button>'
+      +'</div>'
+      +'<div class="foot" style="margin-top:8px;text-align:center">Enter 提交 · 数据只存在本机浏览器 · 提交后 6 秒内可撤销</div>';
+  }
+  h+='</div>';
+  h+=todayList();
+  return h;
+}
+function setBind(k,v){
+  ST.draft[k]=v;
+  if(k==='wrong'&&v!=='')ST.draft.correct='';
+  if(k==='correct'&&v!=='')ST.draft.wrong='';
+  const bar=$('#calcbar');
+  if(bar){
+    const p=calcPreview();
+    bar.innerHTML='<span class="num" style="font-size:10.5px;color:var(--ink-3)">'+(p.n?('正确 '+p.hit+' / '+p.n):'填数字后自动算')+'</span>'
+      +'<span class="num" style="font-size:17px;font-weight:700;color:'+(p.rate==null?'var(--ink-4)':colorHex(p.rate))+'">'+(p.rate==null?'—':pct(p.rate))+'</span>';
+  }
+  const btn=$('[data-act="save"]');
+  if(btn){const p=calcPreview();btn.textContent='保存'+(p.rate!=null?' · '+pct(p.rate):'');}
+}
+function setBind2(k,v){
+  const [g,f]=k.split('.');
+  if(!ST.batch[g])ST.batch[g]={a:'',b:''};
+  ST.batch[g][f]=v;
+}
+
+/* 智能推荐：正确率距目标缺口最大的模块（练习量达到弱项门槛的优先）；
+   全部超线时推荐「离目标最近」的那个保持手感；没数据返回 null */
+function recoModule(){
+  const th=DB.settings.thresholds.module;
+  const list=coreRecs(DB.records);
+  const cands=roots().filter(m=>m.type!=='vocab').map(m=>({m,a:modAgg(list,m.id),t:targetOf(m.id)}))
+    .filter(x=>x.a.n>0&&x.a.rate!=null);
+  if(!cands.length)return null;
+  const solid=cands.filter(x=>x.a.n>=th);
+  const pool=solid.length?solid:cands;
+  pool.sort((x,y)=>(y.t-y.a.rate)-(x.t-x.a.rate));
+  return pool[0];
+}
+/* ============================================================
+   保存
+   ============================================================ */
+function makeRec(mod,total,correct,extra){
+  const m=modById(mod);
+  const subj=m&&m.mode==='subjective';
+  const r=Object.assign({id:'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    date:ST.draft.date||todayStr(),module:mod,mode:subj?'subjective':'objective',
+    tag:ST.draft.tag||null,duration:+ST.draft.dur||null,note:ST.draft.note||'',createdAt:Date.now()},extra||{});
+  if(subj){r.fullScore=total;r.gotScore=correct;}else{r.total=total;r.correct=correct;}
+  return r;
+}
+function pushRecords(recs,label){
+  if(!recs.length)return;
+  const before=sum(DB.records.map(r=>recStat(r).n));
+  ST.undo={kind:'add',ids:recs.map(r=>r.id),at:Date.now()};
+  DB.records=DB.records.concat(recs);
+  saveStore();
+  const after=sum(DB.records.map(r=>recStat(r).n));
+  render();
+  toast(label||('已记录 '+recs.length+' 条'),'撤销',()=>{
+    DB.records=DB.records.filter(r=>recs.every(x=>x.id!==r.id));
+    saveStore();render();toast('已撤销');
+  });
+  checkMilestone(before,after);
+}
+function saveCurrent(){
+  const d=ST.draft, mode=ST.mode;
+  if(mode==='vocab'){
+    const total=+d.total, correct=+d.correct;
+    if(!total||isNaN(correct))return toast('填一下词数和认识数');
+    if(correct<0||correct>total)return toast('认识数要落在 0 ~ '+total+' 之间');
+    pushRecords([makeRec(d.kind==='rev'?'word_rev':'word_new',total,correct,{book:d.book||null})]);
+    ST.draft.total='';ST.draft.correct='';
+    const bar=$('#calcbar');if(bar)bar.innerHTML='';
+    return;
+  }
+  const mod=d.sub||d.mod;
+  const subj=isSubjective(mod);
+  const total=+d.total;
+  let correct=+d.correct;
+  if(!subj&&d.wrong!==''&&!isNaN(+d.wrong)){
+    const w=+d.wrong;
+    if(w>total)return toast('错题数（'+w+'）不能超过题目总数（'+total+'）');
+    correct=total-w;
+  }
+  if(!total||isNaN(total))return toast('填一下'+(subj?'满分':'题目总数'));
+  if(isNaN(correct)||correct<0||correct>total)return toast((subj?'实得':'正确数')+'要落在 0 ~ '+total+' 之间');
+  pushRecords([makeRec(mod,total,correct)]);
+  const keep={mod:d.mod,tag:d.tag,kind:d.kind,book:d.book};
+  ST.draft.total='';ST.draft.wrong='';ST.draft.correct='';ST.draft.dur='';ST.draft.note='';
+  ST.draft.sub='';ST.draft.mod=keep.mod;ST.draft.tag=keep.tag;ST.draft.book=keep.book;
+}
+function saveBatch(){
+  const b=ST.batch;
+  /* 先整卷校验：任何一行错题数/得分超过总数（含留空按默认题数），整批拦下并点名 */
+  let bad=null;
+  BATCH_ROWS.forEach(c=>{
+    if(bad)return;
+    const v=b[c[0]]||{a:'',b:''};
+    if(v.b===''||v.b==null)return;
+    const bb=+v.b;
+    if(isNaN(bb))return;
+    const a=(v.a===''||v.a==null)?c[3]:(+v.a);
+    if(!a||isNaN(a)||a<=0)return;
+    if(bb>a)bad={name:c[1],bb,a,subj:c[4]};
+  });
+  if(bad)return toast('「'+bad.name+'」的'+(bad.subj?'得分':'错题数')+'（'+bad.bb+'）不能超过'+(bad.subj?'满分':'总数')+'（'+bad.a+'），改一下再生成');
+  const recs=[];
+  BATCH_ROWS.forEach(c=>{
+    const v=b[c[0]]||{a:'',b:''};
+    const bb=+v.b;
+    if(v.b===''||isNaN(bb))return;      /* 没填错题数/得分的行不录 */
+    /* 总数（满分）留空但填了错题数 → 按该题型的默认题数计 */
+    const a=(v.a===''||v.a==null)?c[3]:(+v.a);
+    if(!a||isNaN(a)||a<=0)return;
+    if(bb>a)return;
+    recs.push({
+      id:'r_'+Date.now()+'_'+c[0]+Math.random().toString(36).slice(2,4),
+      date:b.date||todayStr(),module:c[0],mode:c[4]?'subjective':'objective',
+      tag:'真题',duration:null,note:'一整套真题',createdAt:Date.now()+(recs.length),
+      ...(c[4]?{fullScore:a,gotScore:bb}:{total:a,correct:a-bb}),
+    });
+  });
+  if(!recs.length)return toast('至少填满一行的两组数字');
+  pushRecords(recs,'已生成 '+recs.length+' 条记录（按细分题型）');
+  BATCH_ROWS.forEach(c=>{ST.batch[c[0]]={a:'',b:''};});
+  render();
+}
+function checkMilestone(before,after){
+  const ms=DB.settings.milestones||[];
+  const hit=ms.filter(m=>before<m&&after>=m&&!DB.settings['_hit'+m]);
+  if(!hit.length)return;
+  hit.forEach(m=>DB.settings['_hit'+m]=true);
+  saveStore();
+  const m=hit[hit.length-1];
+  const el=document.createElement('div');
+  el.className='celebrate';
+  el.innerHTML='<div class="cbadge num">'+m+'</div><div class="ctxt">累计突破 '+m+' 题，继续保持</div>';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2700);
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+function toast(msg,actLabel,actFn){
+  const box=$('#toasts');
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML='<span>'+esc(msg)+'</span>';
+  if(actLabel){
+    const b=document.createElement('button');
+    b.className='undo';b.textContent=actLabel;
+    b.onclick=()=>{actFn&&actFn();close();};
+    el.appendChild(b);
+  }
+  box.appendChild(el);
+  const close=()=>{el.classList.add('out');setTimeout(()=>el.remove(),300);};
+  setTimeout(close,actLabel?6200:2600);
+  return el;
+}
+
+/* ============================================================
+   自定义日期选择器（原生日历弹层无法融入主题）
+   face 保留原有的 data-bind / data-set / id 属性 —— 选完日期后程序化
+   dispatch input/change 事件，完全复用现有的绑定逻辑。
+   ============================================================ */
+function datePickerHTML(attrs,allowClear){
+  return '<div class="dp" data-dp="1">'
+    +'<input class="inp num dp-face" readonly autocomplete="off" data-act="dp-toggle" data-dpclear="'+(allowClear?1:0)+'" '+attrs+'>'
+    +'<div class="dp-panel" hidden></div></div>';
+}
+function dpRender(panel){
+  const dp=panel.parentElement,face=dp.querySelector('.dp-face');
+  let y,mo;
+  if(panel.dataset.ym){const p=panel.dataset.ym.split('-');y=+p[0];mo=+p[1];}
+  else{const d=parseDay(face.value||todayStr());y=d.getFullYear();mo=d.getMonth();}
+  panel.dataset.ym=y+'-'+mo;
+  const first=new Date(y,mo,1);
+  const gridStart=weekStart(first);
+  const sel=face.value;
+  const today=todayStr();
+  const wd=['一','二','三','四','五','六','日'];
+  let cells='';
+  for(let i=0;i<42;i++){
+    const d=addDays(gridStart,i),ds=ymd(d);
+    const dim=d.getMonth()!==mo;
+    const cls='dp-day'+(dim?' dim':'')+(ds===sel?' sel':'')+((ds===today&&!dim)?' td':'');
+    cells+='<button class="'+cls+'" data-act="dp-day" data-v="'+ds+'" type="button">'+d.getDate()+'</button>';
+  }
+  panel.innerHTML='<div class="dp-head">'
+    +'<span class="dp-title num">'+y+' 年 '+(mo+1)+' 月</span>'
+    +'<span class="dp-nav">'
+      +'<button data-act="dp-prev" type="button">‹</button>'
+      +'<button data-act="dp-next" type="button">›</button></span></div>'
+    +'<div class="dp-grid">'+wd.map(w=>'<span class="dp-wd">'+w+'</span>').join('')+cells+'</div>'
+    +'<div class="dp-foot">'
+      +(face.dataset.dpclear==='1'?'<button data-act="dp-clear" type="button">清除</button>':'<span></span>')
+      +'<button data-act="dp-today" type="button">今天</button></div>';
+}
+function dpClose(){ $$('.dp .dp-panel').forEach(p=>{p.hidden=true;}); }
+function dpPick(face,ds){
+  face.value=ds;
+  face.dispatchEvent(new Event('input',{bubbles:true}));
+  face.dispatchEvent(new Event('change',{bubbles:true}));
+  dpClose();
+}
+/* 点击面板外自动收起 */
+document.addEventListener('click',e=>{
+  const inDp=e.target.closest&&e.target.closest('.dp');
+  $$('.dp .dp-panel').forEach(p=>{if(!inDp||p.parentElement!==inDp.closest('.dp')){if(!p.hidden)p.hidden=true;}});
+});
+
+/* ============================================================
+   模态框
+   ============================================================ */
+function closeModal(){const r=$('#modal-root');if(r)r.innerHTML='';}
+function openModal(html){
+  const r=$('#modal-root');
+  r.innerHTML='<div class="scrim" data-act="scrimclose">'+html+'</div>';
+  sizeSegs(); /* 弹窗里的分段器也要有滑块（render 不覆盖 modal-root） */
+}
+function editModal(id){
+  const r=DB.records.find(x=>x.id===id);if(!r)return;
+  const sub=modById(r.module)&&modById(r.module).mode==='subjective';
+  const s=recStat(r);
+  /* ⚠️ 不要在这里写 onclick="event.stopPropagation()" —— 内联处理器跑在冒泡阶段，
+     它会把 modal 内所有按钮的 click 一起挡在 document 之外，导致 data-act 全部失效
+     （关闭 / 保存修改 / 确认清空都点不动，且不报错）。挡住 scrim 的关闭改由
+     scrimclose 分支判断 e.target 是否是 .scrim 本身即可。 */
+  openModal('<div class="modal">'
+    +'<div class="mhead"><div><div style="font-size:15px;font-weight:600">编辑记录</div>'
+      +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">'+esc(modPath(r.module))+' · '+fmtDateCn(r.date)+'</div></div>'
+      +'<button class="mclose" data-act="close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>'
+    +'<div class="mbody">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+        +'<div class="field"><label>日期</label>'
+          +datePickerHTML('id="ed-date" value="'+r.date+'" style="height:40px;font-size:14px"',false)+'</div>'
+        +'<div class="field"><label>'+(sub?'满分':'题目总数')+'</label><input class="inp num" type="number" id="ed-a" value="'+(sub?s.n:s.n)+'"></div>'
+        +'<div class="field"><label>'+(sub?'实得':'正确数')+'</label><input class="inp num" type="number" step="0.5" id="ed-b" value="'+s.hit+'"></div>'
+        +'<div class="field"><label>用时（分钟）</label><input class="inp num" type="number" id="ed-dur" value="'+(r.duration||'')+'"></div>'
+      +'</div>'
+      +'<div class="field" style="margin-top:12px"><label>备注</label><textarea class="inp" id="ed-note">'+esc(r.note||'')+'</textarea></div>'
+      +'<div class="foot" style="margin-top:12px">保存后所有统计与图表会立即重算</div>'
+    +'</div>'
+    +'<div class="mfoot"><button class="btn" data-act="close">取消</button>'
+      +'<button class="btn p" data-act="editsave" data-v="'+id+'">保存修改</button></div>'
+    +'</div>');
+}
+function applyEdit(id){
+  const r=DB.records.find(x=>x.id===id);if(!r)return;
+  const sub=modById(r.module)&&modById(r.module).mode==='subjective';
+  const a=+$('#ed-a').value, b=+$('#ed-b').value;
+  if(isNaN(a)||a<=0||isNaN(b)||b<0||b>a)return toast('数值不合法：正确数要落在 0 ~ 满分/总数 之间');
+  const snap=JSON.parse(JSON.stringify(r));
+  r.date=$('#ed-date').value||r.date;
+  r.duration=+$('#ed-dur').value||null;
+  r.note=$('#ed-note').value||'';
+  if(sub){r.fullScore=a;r.gotScore=b;}else{r.total=a;r.correct=b;}
+  saveStore();closeModal();render();
+  toast('已保存修改','撤销',()=>{Object.assign(r,snap);saveStore();render();toast('已撤销');});
+}
+/* 删除细分题型：其下记录归入上级模块 */
+function delSubModal(id){
+  const m=modById(id);if(!m||!m.parent)return;
+  const n=DB.records.filter(r=>r.module===id).length;
+  openModal('<div class="modal" style="width:min(440px,100%)">'
+    +'<div class="mhead"><div><div style="font-size:15px;font-weight:600">删除细分题型「'+esc(m.name)+'」？</div>'
+    +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">'+(n?'其下 '+n+' 条记录将归入上级模块「'+esc(modById(m.parent).name)+'」':'当前没有记录引用这个题型')+'</div></div></div>'
+    +'<div class="mbody"><div class="hint warn">删除后统计按归属重新汇总，此操作不可撤销。</div></div>'
+    +'<div class="mfoot"><button class="btn" data-act="close">取消</button>'
+    +'<button class="btn d" data-act="delsubdo" data-v="'+id+'">确认删除</button></div>'
+    +'</div>');
+}
+function confirmWipe(){
+  openModal('<div class="modal" style="width:min(440px,100%)">'
+    +'<div class="mhead"><div><div style="font-size:15px;font-weight:600">清空全部数据？</div>'
+    +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">共 '+DB.records.length+' 条记录将全部删除</div></div></div>'
+    +'<div class="mbody">'
+      +'<div class="hint warn">这一步不可恢复，建议先「导出 JSON」留一份备份。</div>'
+      +'<div class="field" style="margin-top:12px"><label>手动输入「清空」两个字以确认</label>'
+      +'<input class="inp" id="wipe-word" placeholder="清空" autocomplete="off"></div>'
+    +'</div>'
+    +'<div class="mfoot"><button class="btn" data-act="close">取消</button>'
+    +'<button class="btn p" data-act="wipedo" id="wipe-btn" disabled style="background:var(--danger);border-color:var(--danger);opacity:.5">确认清空</button></div>'
+    +'</div>');
+}
+
+/* ============================================================
+   导入导出
+   ============================================================ */
+function download(name,text,type){
+  const blob=new Blob([text],{type:type||'application/json;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
+}
+function exportJSON(){
+  download('cet4-tracker-'+todayStr()+'.json',
+    JSON.stringify({modules:DB.modules,records:DB.records,settings:DB.settings},null,2));
+  toast('已导出 JSON');
+}
+function exportCSV(){
+  const head=['日期','模块','总数','正确数','满分','得分','标签','用时','备注'];
+  const lines=[head.join(',')];
+  DB.records.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(r=>{
+    const s=recStat(r),sub=r.mode==='subjective';
+    const row=[r.date,modById(r.module)?modById(r.module).name:r.module,
+      sub?'':s.n,sub?'':s.hit,sub?s.n:'',sub?s.hit:'',
+      r.tag||'',r.duration||'',(r.note||'').replace(/,/g,'，')];
+    lines.push(row.join(','));
+  });
+  download('cet4-tracker-'+todayStr()+'.csv','\ufeff'+lines.join('\n'),'text/csv;charset=utf-8');
+  toast('已导出 CSV（'+DB.records.length+' 条）');
+}
+function pickFile(accept,cb){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept=accept;
+  inp.onchange=()=>{const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>cb(rd.result);rd.readAsText(f,'utf-8');};
+  inp.click();
+}
+function importJSON(text){
+  try{
+    const o=JSON.parse(text);
+    if(!o||!Array.isArray(o.records))throw new Error('缺少 records 字段');
+    const snap=JSON.stringify(DB);
+    DB.records=o.records;
+    if(Array.isArray(o.modules)&&o.modules.length)DB.modules=o.modules;
+    if(o.settings)DB.settings=Object.assign({},DB.settings,o.settings);
+    DB.settings._demo=false;
+    saveStore();render();
+    toast('已导入 '+o.records.length+' 条记录','撤销',()=>{DB=JSON.parse(snap);saveStore();render();toast('已撤销导入');});
+  }catch(e){toast('导入失败：'+e.message);}
+}
+function importCSV(text){
+  const lines=text.replace(/^\ufeff/,'').split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return toast('CSV 内容为空');
+  const head=lines[0].split(',').map(s=>s.trim());
+  const idx={};
+  head.forEach((h,i)=>idx[h]=i);
+  const need=['日期','模块'];
+  for(const n of need)if(idx[n]==null)return toast('CSV 缺少表头列：'+n);
+  const nameMap={};
+  DB.modules.forEach(m=>{nameMap[m.name]=m.id;nameMap[m.id]=m.id;});
+  const recs=[];let bad=0;
+  for(let i=1;i<lines.length;i++){
+    const c=lines[i].split(',');
+    const mod=nameMap[(c[idx['模块']]||'').trim()];
+    const date=(c[idx['日期']]||'').trim();
+    if(!mod||!date){bad++;continue;}
+    const m=modById(mod), sub=m&&m.mode==='subjective';
+    const g=k=>idx[k]==null?'':(c[idx[k]]||'').trim();
+    const total=+g(sub?'满分':'总数')||0, hit=+g(sub?'得分':'正确数')||0;
+    if(!total){bad++;continue;}
+    const r={id:'r_'+Date.now()+'_i'+i,date,module:mod,mode:sub?'subjective':'objective',
+      tag:g('标签')||null,duration:+g('用时')||null,note:g('备注')||'',createdAt:Date.now()+i};
+    if(sub){r.fullScore=total;r.gotScore=hit;}else{r.total=total;r.correct=hit;}
+    recs.push(r);
+  }
+  if(!recs.length)return toast('没有解析到有效记录（跳过了 '+bad+' 行）');
+  const snap=JSON.stringify(DB);
+  DB.records=DB.records.concat(recs);saveStore();render();
+  toast('已导入 '+recs.length+' 条'+(bad?' · 跳过 '+bad+' 行':''),'撤销',()=>{DB=JSON.parse(snap);saveStore();render();toast('已撤销导入');});
+}
+
+/* ============================================================
+   主题
+   ============================================================ */
+const SUN='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.9"/><path d="M12 2.6v2.4M12 19v2.4M2.6 12h2.4M19 12h2.4M5.4 5.4l1.7 1.7M16.9 16.9l1.7 1.7M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+const MOON='<svg viewBox="0 0 24 24" fill="none"><path d="M20 14.2A8.4 8.4 0 1 1 9.8 4a6.8 6.8 0 0 0 10.2 10.2z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>';
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='dark'?'light':'dark';
+  switchTheme(next);
+}
+function switchTheme(next){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const apply=()=>{
+    applyTheme(next);
+    const b=$('#btn-theme');if(b)b.innerHTML=(next==='dark'?SUN:MOON);
+    render();
+  };
+  if(reduce||typeof document.startViewTransition!=='function'){apply();return;}
+  try{
+    document.documentElement.classList.add('vt-theme');
+    const vt=document.startViewTransition(apply);
+    vt.finished.finally(()=>document.documentElement.classList.remove('vt-theme'));
+    /* 兜底：无合成层（无头浏览器 / 个别驱动）时 VT 不会触发 update 回调，
+       只挂上 vt-theme 却什么也不发生。超时后自己补一刀，保证切换一定生效。 */
+    setTimeout(()=>{
+      if(document.documentElement.getAttribute('data-theme')!==next){
+        apply();
+        document.documentElement.classList.remove('vt-theme');
+      }
+    },420);
+  }catch(e){
+    document.documentElement.classList.remove('vt-theme');
+    apply();
+  }
+}
+
+/* ============================================================
+   周报分享图（Canvas 手绘，800×1000）
+   ============================================================ */
+function rr(g,x,y,w,h,r){
+  g.beginPath();
+  g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
+}
+function wrapText(g,text,x,y,maxW,lh){
+  let line='',yy=y;
+  for(const ch of String(text)){
+    if(g.measureText(line+ch).width>maxW&&line){g.fillText(line,x,yy);line=ch;yy+=lh;}
+    else line+=ch;
+  }
+  g.fillText(line,x,yy);
+  return yy+lh;
+}
+function buildReportCanvas(){
+  const W=800,H=1000,DPR=3;
+  const cv=document.createElement('canvas');
+  cv.width=W*DPR;cv.height=H*DPR;
+  const g=cv.getContext('2d');
+  g.scale(DPR,DPR);
+  const F='"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif';
+  const FN='Inter,system-ui,-apple-system,sans-serif';
+  /* 深色版周报：跟 App 深色主题同一套观感（用户要求导出图也全部深色化） */
+  const C={bg:'#131017',ink:'#F2E9EE',ink2:'#BBA9B6',ink3:'#8E7D89',
+           rose:'#FF8AB7',deep:'#FF8AB7',ok:'#3BD9A4',track:'#2A222B',line:'#332C38',white:'#1D1A22'};
+  const ws=weeksSeries(2,null);
+  const cur=ws[1].agg, prev=ws[0].agg;
+  const range=fmtDate(ws[1].start)+' 至 '+fmtDate(ws[1].end);
+  const d=cur.rate!=null&&prev.rate!=null?cur.rate-prev.rate:null;
+  const paper=paperBreakdown();
+  const est=paper.ready?Math.round(normScore(paper.total)):null;
+  const days=new Set(DB.records.filter(r=>r.date>=ws[1].start&&r.date<=ws[1].end).map(r=>r.date)).size;
+  const subj=agg(DB.records.filter(r=>isSubjective(r.module)&&!isVocab(r.module)));
+
+  g.fillStyle=C.bg;g.fillRect(0,0,W,H);
+  /* 顶部两团柔光，呼应页面的背景语言（静态，不用循环） */
+  let grd=g.createRadialGradient(760,60,10,760,60,300);
+  grd.addColorStop(0,'rgba(255,107,157,.18)');grd.addColorStop(1,'rgba(255,107,157,0)');
+  g.fillStyle=grd;g.fillRect(400,0,400,400);
+  grd=g.createRadialGradient(60,940,10,60,940,320);
+  grd.addColorStop(0,'rgba(120,220,190,.13)');grd.addColorStop(1,'rgba(120,220,190,0)');
+  g.fillStyle=grd;g.fillRect(0,620,420,380);
+
+  /* 品牌行：标题 22 / 副标 14 */
+  g.fillStyle=C.rose;rr(g,48,52,28,28,9);g.fill();
+  g.fillStyle=C.ink;g.font='700 22px '+F;g.fillText('四级正确率监测',88,74);
+  g.fillStyle=C.ink2;g.font='500 14px '+F;g.fillText('周报 · '+range,48,116);
+
+  /* 主数字：标签 14 / 大数 76 / 环比 16 / 摘要 14 */
+  g.fillStyle=C.ink2;g.font='500 14px '+F;g.fillText('本周整体正确率',48,170);
+  g.fillStyle=C.ink;g.font='800 76px '+FN;g.fillText(pct(cur.rate),48,248);
+  if(d!=null){
+    g.fillStyle=d>=0?C.ok:C.deep;g.font='600 16px '+FN;
+    g.fillText((d>=0?'↑ ':'↓ ')+Math.abs(d).toFixed(2)+' pt 环比上周',48,282);
+  }
+  g.fillStyle=C.ink2;g.font='400 14px '+F;
+  g.fillText('本周 '+cur.n+' 题 · 打卡 '+days+' 天 · 主观题得分率 '+pct(subj.rate),48,310);
+
+  /* 模块条：区块标题 18 / 名称 14 / 数值 16 / 备注 13 */
+  let y=372;
+  g.fillStyle=C.ink;g.font='700 18px '+F;g.fillText('各模块正确率',48,y);
+  y+=26;
+  roots().filter(m=>m.type!=='vocab').forEach(m=>{
+    const a=modAgg(ws[1].recs,m.id), t=targetOf(m.id);
+    const col=colorOf(a.rate);
+    g.fillStyle=C.ink;g.font='600 14px '+F;g.fillText(m.name,48,y+14);
+    g.fillStyle=C.track;rr(g,132,y,480,16,8);g.fill();
+    const bw=Math.max(a.rate==null?0:clamp(a.rate,0,100)/100*480,0);
+    if(bw>0){const w2=Math.max(bw,6);g.fillStyle=col;rr(g,132,y,w2,16,Math.min(8,w2/2));g.fill();}
+    const gx=132+t/100*480;
+    g.fillStyle=C.ink3;g.fillRect(gx-1,y-3,2,22);
+    g.fillStyle=col;g.font='700 16px '+FN;g.textAlign='right';
+    g.fillText(pct(a.rate),752,y+14);g.textAlign='left';
+    g.fillStyle=C.ink3;g.font='400 13px '+F;
+    g.fillText(a.n+' 题 · 目标 '+t+'%',48,y+34);
+    y+=56;
+  });
+
+  /* 四格：卡值 24 / 卡标 13 */
+  y+=10;
+  const cells=[['本周题量',cur.n+' 题',C.ink],['打卡天数',days+' 天',C.ink],
+               ['卷面原始分',r1(paper.total)+' / 100',C.deep],['预估报道分',est==null?'—':est+' 分',C.deep]];
+  cells.forEach((c,i)=>{
+    const x=48+i*178;
+    g.fillStyle=C.white;rr(g,x,y,166,86,14);g.fill();
+    g.strokeStyle=C.line;g.lineWidth=1.5;g.stroke();
+    g.fillStyle=C.ink2;g.font='400 13px '+F;g.fillText(c[0],x+14,y+27);
+    g.fillStyle=c[2];g.font='700 24px '+FN;g.fillText(c[1],x+14,y+61);
+  });
+  y+=112;
+
+  /* 一句话总结：白卡 + 描边，从浅粉底上提出来 */
+  g.fillStyle=C.white;rr(g,48,y,704,132,16);g.fill();
+  g.strokeStyle=C.line;g.lineWidth=1.5;g.stroke();
+  g.fillStyle=C.deep;g.font='700 15px '+F;g.fillText('本周总结',68,y+31);
+  g.fillStyle=C.ink;g.font='400 15px '+F;
+  wrapText(g,weeklyReport(null),68,y+62,664,26);
+
+  /* 脚注 12 */
+  g.fillStyle=C.ink3;g.font='400 12px '+F;
+  g.fillText('卷面原始分按每题原始分折算；报道分走官方常模公式换算，为经验值估算',48,930);
+  g.fillText('生成于 '+todayStr()+' · 数据仅存本机',48,952);
+  return cv;
+}
+function shareReport(){
+  const cv=buildReportCanvas();
+  const url=cv.toDataURL('image/png');
+  openModal('<div class="modal" style="width:min(560px,100%)">'
+    +'<div class="mhead"><div><div style="font-size:15px;font-weight:600">周报分享图</div>'
+    +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">高清 3 倍 · 2400 × 3000 PNG · 可直接发朋友圈或存相册</div></div>'
+    +'<button class="mclose" data-act="close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>'
+    +'<div class="mbody"><img src="'+url+'" alt="周报分享图" style="width:100%;border-radius:14px;border:1px solid var(--line);display:block"></div>'
+    +'<div class="mfoot"><button class="btn" data-act="close">关闭</button>'
+    +'<button class="btn p" data-act="sharedl">下载 PNG</button></div>'
+    +'</div>');
+  window.__reportURL=url;
+}
+
+/* ============================================================
+   复制上一条 / 模块重命名
+   ============================================================ */
+function copyLast(){
+  const last=DB.records.slice().sort((a,b)=>b.createdAt-a.createdAt)[0];
+  if(!last)return toast('还没有可复制的记录');
+  const m=modById(last.module);
+  ST.mode=isVocab(last.module)?'vocab':'mod';
+  ST.draft.sub=m&&m.parent?last.module:'';
+  ST.draft.mod=m?(m.parent||last.module):last.module;
+  ST.draft.tag=last.tag||'';
+  ST.draft.dur=last.duration||'';
+  ST.draft.note=last.note||'';
+  ST.draft.book=last.book||'';
+  ST.draft.total='';ST.draft.correct='';ST.draft.wrong='';
+  render();
+  toast('已套用上一条的模块 / 标签 / 备注，填数字即可提交');
+}
+function renameModal(id){
+  const m=modById(id);if(!m)return;
+  const kids=childrenOf(id);
+  openModal('<div class="modal" style="width:min(460px,100%)">'
+    +'<div class="mhead"><div><div style="font-size:15px;font-weight:600">重命名模块</div>'
+    +'<div style="font-size:11px;color:var(--ink-3);margin-top:3px">改的是显示名 · 历史记录按 id 归属，不会错位</div></div>'
+    +'<button class="mclose" data-act="close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>'
+    +'<div class="mbody">'
+      +'<div class="field"><label>模块名称</label><input class="inp" id="rn-name" value="'+esc(m.name)+'"></div>'
+      +(kids.length?'<div class="field" style="margin-top:12px"><label>子题型（改名后同样立即生效）</label>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">'
+        +kids.map(k=>'<input class="inp" style="width:140px;height:32px;font-size:12px" data-rn-sub="'+k.id+'" value="'+esc(k.name)+'">').join('')
+        +'</div></div>':'')
+      +'<div class="hint" style="margin-top:14px">改完所有统计、图表与筛选器会同步刷新；已有 '+agg(DB.records.filter(r=>subtree(id).indexOf(r.module)>=0)).count+' 条记录会跟着显示新名字。</div>'
+    +'</div>'
+    +'<div class="mfoot"><button class="btn" data-act="close">取消</button>'
+    +'<button class="btn p" data-act="renamedo" data-v="'+id+'">保存</button></div>'
+    +'</div>');
+}
+function applyRename(id){
+  const m=modById(id);if(!m)return;
+  const nv=($('#rn-name').value||'').trim();
+  if(!nv)return toast('名称不能为空');
+  const snap=JSON.stringify(DB.modules);
+  m.name=nv;m.short=nv.length>4?nv.slice(0,4):nv;
+  $$('[data-rn-sub]').forEach(inp=>{
+    const k=DB.modules.find(x=>x.id===inp.getAttribute('data-rn-sub'));
+    const v=(inp.value||'').trim();
+    if(k&&v)k.name=v;
+  });
+  saveStore();closeModal();render();
+  toast('已重命名','撤销',()=>{DB.modules=JSON.parse(snap);saveStore();render();toast('已撤销');});
+}
+
+/* 视图调度 + 事件 */
+function viewHTML(){
+  switch(ST.view){
+    case 'analyze':return vAnalyze();
+    case 'vocab':return vVocab();
+    case 'history':return vHistory();
+    default:return vOverview();
+  }
+}
+function render(animate){
+  /* animate=false（分段器 / 筛选等小操作）→ body.quiet：数据更新但动画全部跳到最终态，
+     避免"动一处、全页跟着演一遍"。只有切页签 / 主题这类大切换才重放入场。 */
+  document.body.classList.toggle('quiet',!animate);
+  const main=$('#main');
+  /* 重建前抓拍带 data-key 条形的实时状态（宽度可能是过渡中途值，正好做补间起点） */
+  BAR_OLD={};
+  main.querySelectorAll('.bar-fill[data-key]').forEach(el=>{
+    const cs=getComputedStyle(el);
+    const track=el.parentElement.getBoundingClientRect().width||1;
+    BAR_OLD[el.dataset.key]={w:Math.min(120,parseFloat(cs.width)/track*100),bg:cs.backgroundColor};
+  });
+  main.innerHTML=viewHTML();
+  const inner=main.firstElementChild;
+  if(inner){inner.classList.remove('enter');if(animate)requestAnimationFrame(()=>inner.classList.add('enter'));}
+  $('#side').innerHTML=sidePanel();
+  $('#tabs').innerHTML=navTabs();
+  paintCharts();
+}
+function navTabs(){
+  const T=[['overview','总览'],['analyze','分析'],['vocab','单词'],['history','历史']];
+  return '<i class="tab-thumb" hidden></i>'
+    +T.map(t=>'<button class="tab'+(ST.view===t[0]?' on':'')+'" data-act="view" data-v="'+t[0]+'">'+t[1]+'</button>').join('');
+}
+function updCdt(){
+  const n=daysLeft();
+  const el=$('#cdt');
+  if(el)el.textContent='距 '+DB.settings.examDate+' 还有 '+n+' 天';
+}
+/* 顶栏「记一笔」：侧栏的题目数输入框是三步录入的第一落点，直接聚焦它 */
+function focusQuick(){
+  const find=()=>document.querySelector('#side [data-bind="total"]');
+  const go=()=>{
+    const el=find();
+    if(!el)return;
+    el.scrollIntoView({block:'center',behavior:'smooth'});
+    setTimeout(()=>el.focus(),260);
+  };
+  if(find())go();
+  else{ST.mode='mod';render();setTimeout(go,80);}
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');
+  if(!t)return;
+  const act=t.dataset.act, v=t.dataset.v;
+  /* 分段器点击：先记下滑块旧位置，重建后再从旧位置滑过去 —— 只有被点的这一个会动 */
+  let slide=null;
+  const segEl=t.closest('.seg');
+  if(segEl&&segEl.dataset.seg){
+    const th=segEl.querySelector('.seg-thumb');
+    if(th&&!th.hidden)slide={key:segEl.dataset.seg,from:th.style.transform||'translateX(0px)',w:th.style.width||'0px'};
+  }
+  switch(act){
+    case 'view':{
+      const box=$('#tabs');
+      const th=box&&box.querySelector('.tab-thumb');
+      const tabFrom=(th&&!th.hidden)?{from:th.style.transform||'translateX(0px)',w:th.style.width||'0px'}:null;
+      ST.view=v;ST.openMod=null;render(true);window.scrollTo(0,0);
+      if(tabFrom){
+        const nth=$('#tabs .tab-thumb'), on=$('#tabs .tab.on');
+        if(nth&&on)slideThumb(nth,on,tabFrom.from,tabFrom.w);
+      }
+      break;
+    }
+    case 'toggleTheme':toggleTheme();break;
+    case 'openSettings':settingsModal();break;
+    case 'quick':focusQuick();break;
+    case 'openmod':
+      ST.openMod=(ST.openMod===v)?null:v;
+      /* 小操作走 quiet：整页重放动画 = "点击模块整个页面都在闪" */
+      render();
+      break;
+    case 'trendmode':ST.range.trend=v;render();break;
+    case 'dayrange':ST.range.day=+v;render();break;
+    case 'modrange':ST.range.mod=+v;render();break;
+    case 'accmode':DB.settings.accuracyMode=v;saveStore();render();break;
+    case 'incvocab':DB.settings.includeVocab=v==='1';saveStore();render();break;
+    case 'norm':DB.settings.normParams=v;saveStore();render();break;
+    case 'theme':switchTheme(v);break;
+    case 'smode':ST.mode=v;render();break;
+    case 'vkind':ST.draft.kind=v;render();break;
+    case 'smod':ST.draft.mod=v;ST.draft.sub='';render();break;
+    case 'ssub':ST.draft.sub=v;render();break;
+    case 'stag':ST.draft.tag=(ST.draft.tag===v?'':v);render();break;
+    case 'save':saveCurrent();break;
+    case 'batchsave':saveBatch();break;
+    case 'batchclear':resetBatch();render();break;
+    case 'fmod':ST.filters.mod=v;render();break;
+    case 'ftag':ST.filters.tag=v;render();break;
+    case 'fdays':ST.filters.days=+v;render();break;
+    case 'edit':editModal(v);break;
+    case 'editsave':applyEdit(v);break;
+    case 'del':delRecord(v);break;
+    case 'close':closeModal();break;
+    case 'dp-toggle':{
+      const dp=t.closest('.dp'),panel=dp.querySelector('.dp-panel');
+      if(panel.hidden){panel.dataset.ym='';dpRender(panel);panel.hidden=false;}
+      else panel.hidden=true;
+      break;
+    }
+    case 'dp-prev':case 'dp-next':{
+      const panel=t.closest('.dp').querySelector('.dp-panel');
+      const p=(panel.dataset.ym||'').split('-');
+      let y=+p[0],mo=+p[1]+(act==='dp-next'?1:-1);
+      if(mo<0){mo=11;y--;}if(mo>11){mo=0;y++;}
+      panel.dataset.ym=y+'-'+mo;dpRender(panel);
+      break;
+    }
+    case 'dp-day':dpPick(t.closest('.dp').querySelector('.dp-face'),v);break;
+    case 'dp-today':dpPick(t.closest('.dp').querySelector('.dp-face'),todayStr());break;
+    case 'dp-clear':dpPick(t.closest('.dp').querySelector('.dp-face'),'');break;
+    case 'scrimclose':if(e.target.classList.contains('scrim'))closeModal();break;
+    case 'guide-start':closeModal();ST.view='overview';ST.openMod=null;render(true);ST.guide=0;guideShow();break;
+    case 'guide-next':ST.guide=Math.min(ST.guide+1,GUIDE_STEPS.length-1);guideShow();break;
+    case 'guide-prev':ST.guide=Math.max(0,ST.guide-1);guideShow();break;
+    case 'guide-end':endGuide();break;
+    case 'wipe':confirmWipe();break;
+    case 'wipedo':DB.records=[];DB.settings._demo=false;resetMilestones();saveStore();closeModal();render();toast('已清空全部数据');break;
+    case 'cleardemo':clearDemo();render();toast('已清空演示数据');break;
+    case 'expjson':exportJSON();break;
+    case 'expcsv':exportCSV();break;
+    case 'impjson':pickFile('.json,application/json',importJSON);break;
+    case 'impcsv':pickFile('.csv,.txt,text/csv',importCSV);break;
+    case 'share':shareReport();break;
+    case 'sharedl':
+      if(window.__reportURL){
+        const a=document.createElement('a');
+        a.href=window.__reportURL;a.download='cet4-周报-'+todayStr()+'.png';
+        document.body.appendChild(a);a.click();
+        setTimeout(()=>a.remove(),300);
+        toast('已下载周报图');
+      }
+      break;
+    case 'copylast':copyLast();break;
+    case 'sreset':resetDraft(false);render();break;
+    case 'rename':renameModal(v);break;
+    case 'renamedo':applyRename(v);break;
+    case 'addsub':{
+      const p=modById(v);if(!p)break;
+      const n=childrenOf(v).length;
+      DB.modules.push({id:'sub_'+Date.now().toString(36),parent:v,name:'新题型 '+(n+1),order:n+1});
+      saveStore();render();refreshSettingsModal();
+      toast('已添加细分题型，点名称直接改名');
+      break;
+    }
+    case 'delsub':delSubModal(v);break;
+    case 'delsubdo':{
+      const m=modById(v);
+      if(m&&m.parent){
+        DB.records.forEach(r=>{if(r.module===v)r.module=m.parent;});
+        DB.modules=DB.modules.filter(x=>x.id!==v);
+        saveStore();
+      }
+      closeModal();render();settingsModal();
+      toast('已删除「'+(m?m.name:'')+'」，其记录归入上级模块');
+      break;
+    }
+  }
+  if(slide){
+    const seg=document.querySelector('.seg[data-seg="'+slide.key+'"]');
+    if(seg){
+      /* 弹窗里的分段器不再整窗重建（会闪）—— 就地把 .on 移到被点的按钮，再驱动一次真滑动 */
+      if(seg.closest('#modal-root')&&seg.contains(t)){
+        seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===t));
+      }
+      const th=seg.querySelector('.seg-thumb'), on=seg.querySelector('button.on');
+      slideThumb(th,on,slide.from,slide.w);
+    }
+  }
+});
+function delRecord(id){
+  const r=DB.records.find(x=>x.id===id);if(!r)return;
+  const snap=JSON.parse(JSON.stringify(r));
+  DB.records=DB.records.filter(x=>x.id!==id);
+  saveStore();render();
+  toast('已删除 '+modPath(r.module),'撤销',()=>{DB.records.push(snap);saveStore();render();toast('已恢复');});
+}
+document.addEventListener('input',e=>{
+  const t=e.target;
+  const b=t.getAttribute('data-bind');
+  if(b){setBind(b,t.value);if(b==='date'){ST.batch.date=t.value;}return;}
+  const b2=t.getAttribute('data-bind2');
+  if(b2){setBind2(b2,t.value);return;}
+  const st=t.getAttribute('data-set');
+  if(st){setSetting(st,t.value);return;}
+  const tg=t.getAttribute('data-target');
+  if(tg){
+    const n=+t.value;
+    if(n>0){DB.settings.targets.byModule[tg]=n;saveStore();render();}   /* 不刷新的话总览目标线停在旧值 */
+    return;
+  }
+  const rn=t.getAttribute('data-rename');
+  if(rn){
+    const m=modById(rn);
+    if(m&&t.value.trim()){m.name=t.value.trim();saveStore();}
+    return;
+  }
+  if(t.id==='wipe-word'){
+    const btn=$('#wipe-btn');
+    if(btn){const ok=t.value.trim()==='清空';btn.disabled=!ok;btn.style.opacity=ok?'1':'.5';}
+    return;
+  }
+  if(t.id==='hq'){
+    ST.filters.q=t.value;
+    clearTimeout(window.__hq);
+    window.__hq=setTimeout(()=>{const box=$('#hlist');if(box){box.innerHTML=hlistInner();}},260);
+  }
+});
+document.addEventListener('change',e=>{
+  const st=e.target.getAttribute&&e.target.getAttribute('data-set');
+  if(st){setSetting(st,e.target.value);return;}
+  const rn=e.target.getAttribute&&e.target.getAttribute('data-rename');
+  if(rn){render();refreshSettingsModal();return;} /* 失焦后同步其它视图里的模块名 */
+});
+function setSetting(k,v){
+  const s=DB.settings;
+  if(k.indexOf('.')>0){
+    const [a,b]=k.split('.');
+    s[a][b]=+v||0;
+  }else if(k==='examDate'){s.examDate=v;}
+  else{s[k]=+v||0;}
+  saveStore();
+  if(k==='examDate')updCdt();
+  if(k.indexOf('targets.')===0||k==='paperRange'||k==='minQuestions'||k==='thresholds.module'||k==='thresholds.subtype'||k==='reviewThreshold'||k==='vocabBookSize')render();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();return;}
+  const inField=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if(e.altKey&&e.key.toLowerCase()==='n'){ST.mode='set';render(true);e.preventDefault();return;}
+  if(e.key==='Enter'&&!e.shiftKey&&e.target&&e.target.closest&&e.target.closest('#side')
+     &&ST.mode!=='set'&&e.target.tagName!=='TEXTAREA'){saveCurrent();e.preventDefault();}
+});
+window.addEventListener('resize',()=>{clearTimeout(window.__rz);window.__rz=setTimeout(paintCharts,140);});
+
+/* 历史搜索：只重绘列表，避免输入时丢焦点 */
+function hlistInner(){
+  const f=ST.filters;
+  let list=DB.records.slice();
+  if(f.mod)list=list.filter(r=>subtree(f.mod).indexOf(r.module)>=0);
+  if(f.tag)list=list.filter(r=>(r.tag||'')===f.tag);
+  if(f.days)list=list.filter(r=>dayDiff(r.date,todayStr())<f.days);
+  if(f.q){const q=f.q.toLowerCase();list=list.filter(r=>(modPath(r.module)+' '+(r.note||'')).toLowerCase().indexOf(q)>=0);}
+  list.sort((a,b)=>a.date<b.date?1:(a.date>b.date?-1:b.createdAt-a.createdAt));
+  if(!list.length)return '<div class="empty">没有符合条件的记录</div>';
+  const groups={};list.forEach(r=>{(groups[r.date]=groups[r.date]||[]).push(r);});
+  let html='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>日期</th><th>模块路径</th><th>题量 / 得分</th><th class="r">正确率</th><th>用时</th><th class="r">操作</th></tr></thead><tbody>';
+  Object.keys(groups).sort().reverse().forEach(d=>{
+    const rs=groups[d],a=agg(rs);
+    html+='<tr class="grp"><td colspan="6">'+fmtDateCn(d)+'<span style="float:right;font-weight:400;color:var(--ink-3)">当日 '+rs.length+' 条 · '+a.n+' 题 · '+pct(a.rate)+'</span></td></tr>';
+    rs.forEach(r=>{
+      const s=recStat(r),rt=rateOf(s.hit,s.n),sub=modById(r.module)&&modById(r.module).mode==='subjective';
+      html+='<tr><td class="num" style="width:70px;color:var(--ink-3)">'+r.date.slice(5)+'</td>'
+        +'<td><span style="font-size:12px;font-weight:500">'+esc(modPath(r.module))+'</span>'+(r.tag?' <span class="pill">'+esc(r.tag)+'</span>':'')+'</td>'
+        +'<td class="num" style="width:150px">'+s.hit+' / '+s.n+(sub?' 分':' 题')+'</td>'
+        +'<td class="num r" style="width:110px;font-weight:600;color:'+colorHex(rt)+'">'+pct(rt)+'</td>'
+        +'<td class="num" style="width:80px;color:var(--ink-3)">'+(r.duration?r.duration+' 分':'—')+'</td>'
+        +'<td class="r" style="width:110px"><span class="ops">'
+        +'<button data-act="edit" data-v="'+r.id+'">编辑</button>'
+        +'<button class="del" data-act="del" data-v="'+r.id+'">删除</button></span></td></tr>';
+    });
+  });
+  return html+'</tbody></table></div>';
+}
+
+/* ============================================================
+   新手引导：首次打开自动出现（localStorage 标记），设置里可重看
+   ============================================================ */
+const GUIDE_SEEN='cet4_guide_v1';
+const GUIDE_STEPS=[
+  {t:'欢迎使用四级正确率监测',
+   b:'所有数据只保存在本机浏览器，不上传任何地方。你现在看到的是<b>演示数据</b>——熟悉之后到「历史 → 数据与备份 → 清空全部数据」清掉重来即可。',
+   sel:null},
+  {t:'右侧：随时记一笔',
+   b:'三种录法：「模块刷题」选题型记正确率；「一整套」按 8 个题型分行录，总数留空自动按默认题数；「背单词」记词数与认识数。日期可改，支持补记。',
+   sel:'#side .card'},
+  {t:'两张环卡：客观题 vs 主观题',
+   b:'左环是听力 + 阅读的<b>客观题</b>正确率，右环是写作 + 翻译的<b>主观题</b>得分率。两边的目标线在「设置 → 目标与门槛」里分开调。',
+   sel:'[data-guide="kpi-obj"]'},
+  {t:'模块正确率对比',
+   b:'切「近 7 / 30 / 90 天」档位对比变化；低于自己目标线的模块会挂上同色「弱项」标。想看每个题型的正确率，翻到后面第 6 步的「分析」页。',
+   sel:'[data-guide="cmp"]'},
+  {t:'预估总分怎么来的',
+   b:'各题型按每题分值折成卷面 100 分，再经常模折算成 710 制。常模参数有保守 / 中性 / 乐观三档，在「设置 → 考试与估分」里切换。',
+   sel:'[data-guide="est"]'},
+  {view:'analyze',t:'分析页：下钻到每个题型',
+   b:'点任一模块卡，下方展开它的<b>子题型正确率、周 / 日趋势与最弱题型</b>；右边是「正确率 × 题量」双轴图——练得多却没提升、练得少但很准，一眼可辨。',
+   sel:'[data-guide="ana-drill"]'},
+  {view:'vocab',t:'单词页：背单词的家',
+   b:'四张指标卡：<b>新词首答率</b>（健康区间 60–75%）、复习正确率、累计过词量、待复习池；下方是每日过词量与复习节奏。数据全部来自「记一笔 → 背单词」。',
+   sel:'[data-guide="vocab-kpi"]'},
+  {view:'history',t:'历史页：记录与备份',
+   b:'左侧按<b>模块 / 标签 / 关键字</b>筛选全部记录，每条可编辑、删除；右栏是数据与备份：导出 JSON / CSV、导入恢复，以及需要输入「清空」二字的危险操作。',
+   sel:'#side .card'},
+  {view:'overview',t:'就这些，开始吧',
+   b:'右上角<b>齿轮</b>是全部设置：目标、估分参数、统计口径、主题。每天记一笔，看板会替你盯着正确率的走向。祝备考顺利！',
+   sel:null},
+];
+let _guidePlace=null;
+function startGuide(){
+  ST.guide=0;
+  if(!_guidePlace){
+    _guidePlace=function(){guidePlace();};
+    window.addEventListener('resize',_guidePlace);
+    window.addEventListener('scroll',_guidePlace,true);
+  }
+  guideShow();
+}
+function endGuide(){
+  ST.guide=-1;
+  const g=$('#guide-root');if(g)g.innerHTML='';
+  try{localStorage.setItem(GUIDE_SEEN,'1');}catch(e){}
+}
+function guideShow(){
+  const s=GUIDE_STEPS[ST.guide];
+  /* 该步指定页面且当前不在 → 先切过去再定位（图表重建给一拍时间） */
+  if(s.view&&ST.view!==s.view){
+    ST.view=s.view;ST.openMod=null;
+    render(true);window.scrollTo(0,0);
+    setTimeout(()=>guidePlace(),140);
+  }
+  let g=$('#guide-root');
+  if(!g){g=document.createElement('div');g.id='guide-root';document.body.appendChild(g);}
+  const i=ST.guide;
+  g.innerHTML='<div class="guide-block"></div><div class="guide-hl"></div><div class="guide-arrow" hidden></div>'
+    +'<div class="guide-card"><div class="gt"><i>'+(i+1)+'</i>'+s.t+'</div>'
+      +'<div class="gb">'+s.b+'</div>'
+      +'<div class="gf"><div class="guide-dots">'+GUIDE_STEPS.map((_,k)=>'<i class="'+(k===i?'on':'')+'"></i>').join('')+'</div>'
+        +(i>0?'<button class="btn sm" data-act="guide-prev">上一步</button>':'')
+        +'<button class="btn sm p" data-act="'+(i<GUIDE_STEPS.length-1?'guide-next':'guide-end')+'">'+(i<GUIDE_STEPS.length-1?'下一步':'开始使用')+'</button>'
+        +'<button class="btn nk" data-act="guide-end">跳过</button>'
+      +'</div></div>';
+  requestAnimationFrame(guidePlace);
+}
+function guidePlace(){
+  const i=ST.guide;
+  const hl=document.querySelector('#guide-root .guide-hl'),
+        card=document.querySelector('#guide-root .guide-card'),
+        arrow=document.querySelector('#guide-root .guide-arrow');
+  if(i==null||i<0||!hl||!card)return;
+  const s=GUIDE_STEPS[i];
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const t=s.sel?document.querySelector(s.sel):null;
+  if(t&&t.offsetWidth>0){
+    let r=t.getBoundingClientRect();
+    if(r.top<60||r.bottom>vh-16||r.left<0||r.right>vw){
+      t.scrollIntoView({block:'center'});
+      r=t.getBoundingClientRect();
+    }
+    hl.style.display='';
+    hl.style.left=(r.left-6)+'px';hl.style.top=(r.top-6)+'px';
+    hl.style.width=(r.width+12)+'px';hl.style.height=(r.height+12)+'px';
+    const cw=card.offsetWidth,ch=card.offsetHeight;
+    let cx=clamp(r.left+r.width/2-cw/2,12,vw-cw-12),cy,dir;
+    if(r.bottom+ch+30<vh){cy=r.bottom+16;dir='top';}
+    else if(r.top-ch-30>56){cy=r.top-ch-16;dir='bottom';}
+    else{
+      cy=clamp(r.top+r.height/2-ch/2,64,vh-ch-14);
+      cx=r.right+16;dir='left';
+      if(cx+cw>vw-12){cx=r.left-cw-16;dir='right';}
+    }
+    card.style.left=cx+'px';card.style.top=cy+'px';
+    /* 箭头：贴在卡片朝向目标的那条边，水平/垂直夹在目标中线与卡片范围内 */
+    const tx=clamp(r.left+r.width/2,cx+22,cx+cw-22);
+    const ty=clamp(r.top+r.height/2,cy+22,cy+ch-22);
+    let ax,ay;
+    if(dir==='top'){ax=tx-7;ay=cy-7;}
+    else if(dir==='bottom'){ax=tx-7;ay=cy+ch-7;}
+    else if(dir==='left'){ax=cx-7;ay=ty-7;}
+    else{ax=cx+cw-7;ay=ty-7;}
+    arrow.hidden=false;
+    arrow.style.left=ax+'px';arrow.style.top=ay+'px';
+  }else{
+    hl.style.display='none';arrow.hidden=true;
+    card.style.left=Math.max(12,(vw-card.offsetWidth)/2)+'px';
+    card.style.top=Math.max(72,(vh-card.offsetHeight)/2.6)+'px';
+  }
+}
+
+/* ============================================================
+   启动
+   ============================================================ */
+function boot(){
+  loadStore();
+  let savedTheme=null;
+  try{savedTheme=localStorage.getItem(LS_THEME);}catch(e){}
+  let th=savedTheme||DB.settings.theme||'light';
+  if(th==='system')th='light';   /* 跟随系统已移除，老值归浅色 */
+  applyTheme(th);                /* applyTheme 会写回 LS_THEME，下次打开记住这次的颜色 */
+  resetDraft(false);resetBatch();
+  $('#btn-theme').innerHTML=(document.documentElement.getAttribute('data-theme')==='dark'?SUN:MOON);
+  render(true);
+  updCdt();
+  setTimeout(()=>{layoutTabs();sizeSegs();},80);
+  document.fonts&&document.fonts.ready&&document.fonts.ready.then(()=>{layoutTabs();sizeSegs();});
+  window.__ready=true;
+  /* 首次打开：稍等首屏渲染完，弹新手引导 */
+  setTimeout(()=>{
+    let seen=null;try{seen=localStorage.getItem(GUIDE_SEEN);}catch(e){}
+    if(!seen)startGuide();
+  },700);
+}
+boot();
+</script>
+</body>
+</html>
